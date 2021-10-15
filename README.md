@@ -45,6 +45,8 @@ The `docker-credential-env` binary must be installed to `$PATH`, configured via 
 environment {
     DOCKER_hub_docker_com          = credentials('hub.docker.com') // Username-Password credential
     DOCKER_artifactory_example_com = credentials('jenkins.artifactory') // (Vault) Username-Password credential
+    AWS_ROLE_ARN                   = 'arn:aws:iam::123456789:role/jenkins-user'
+    // or perhaps AWS_CONFIG and AWS_PROFILE
     AWS_ACCESS_KEY_ID              = credentials('AWS_ACCESS_KEY_ID') // String credential
     AWS_SECRET_ACCESS_KEY          = credentials('AWS_SECRET_ACCESS_KEY') // String credential
 }
@@ -55,6 +57,7 @@ stages {
             sh "docker push hub.docker.com/example/example-image:1.0"
         }
     }
+
     stage("Upload Image2 to Artifactory") {
         steps {
             sh "docker push artifactory.example.com/example/example-image:1.0"

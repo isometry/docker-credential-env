@@ -4,7 +4,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -99,18 +98,12 @@ func showUsage(exitCode int) {
 }
 
 func readPayload(reader io.Reader) (payload string, err error) {
-	scanner := bufio.NewScanner(reader)
-
-	buffer := new(bytes.Buffer)
-	for scanner.Scan() {
-		buffer.Write(scanner.Bytes())
-	}
-
-	if err = scanner.Err(); err != nil && err != io.EOF {
+	var content []byte
+	content, err = io.ReadAll(reader)
+	if err != nil {
 		return
 	}
-
-	payload = strings.TrimSpace(buffer.String())
+	payload = string(bytes.TrimSpace(content))
 	return
 }
 
@@ -145,6 +138,7 @@ func getEcrToken(region string) (credential Credential, err error) {
 	if err != nil {
 		return
 	}
+	cfg.Region = region
 
 	client := ecr.NewFromConfig(cfg)
 
