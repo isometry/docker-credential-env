@@ -28,22 +28,31 @@ In `~/.docker/config.json`:
 
 ## Example Usage
 
+### Jenkins
+
 ```groovy
 environment {
-    DOCKER_hub_docker_com = credentials('hub.docker.com') // Username-Password credential
-    AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID') // String credential
-    AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY') // String credential
+    DOCKER_hub_docker_com          = credentials('hub.docker.com') // Username-Password credential
+    DOCKER_artifactory_example_com = credentials('jenkins.artifactory') // (Vault) Username-Password credential
+    AWS_ACCESS_KEY_ID              = credentials('AWS_ACCESS_KEY_ID') // String credential
+    AWS_SECRET_ACCESS_KEY          = credentials('AWS_SECRET_ACCESS_KEY') // String credential
 }
 
 stages {
-    stage("Upload Image to Docker Hub") {
+    stage("Upload Image1 to Docker Hub") {
         steps {
             sh "docker push ${image1}" // image1 tagged with hub.docker.com/whatever
         }
     }
-    stage("Upload Image to AWS-ECR") {
+    stage("Upload Image2 to Artifactory") {
         steps {
-            sh "docker push ${image2}" // image2 tagged with <aws-account-id>.dkr.ecr.<region>.amazonaws.com/whatever
+            sh "docker push ${image2}" // image2 tagged with artifactory.example.com/whatever
+        }
+    }
+
+    stage("Upload Image3 to AWS-ECR") {
+        steps {
+            sh "docker push ${image3}" // image3 tagged with <aws-account-id>.dkr.ecr.<region>.amazonaws.com/whatever
         }
     }
 }
