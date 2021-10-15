@@ -94,8 +94,7 @@ func showVersion() {
 }
 
 func showUsage(exitCode int) {
-	fmt.Fprintln(os.Stderr, "Usage: docker-credential-env get <hostname>")
-	fmt.Fprintln(os.Stderr, "\nThis is a Docker credential helper, not intended to be run directly from a shell.")
+	fmt.Fprintln(os.Stderr, "This is a Docker credential helper, not intended to be run directly from a shell.")
 	os.Exit(exitCode)
 }
 
