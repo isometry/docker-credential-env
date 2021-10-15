@@ -41,18 +41,18 @@ environment {
 stages {
     stage("Upload Image1 to Docker Hub") {
         steps {
-            sh "docker push ${image1}" // image1 tagged with hub.docker.com/whatever
+            sh "docker push hub.docker.com/example/example-image:1.0"
         }
     }
     stage("Upload Image2 to Artifactory") {
         steps {
-            sh "docker push ${image2}" // image2 tagged with artifactory.example.com/whatever
+            sh "docker push artifactory.example.com/example/example-image:1.0"
         }
     }
 
     stage("Upload Image3 to AWS-ECR") {
         steps {
-            sh "docker push ${image3}" // image3 tagged with <aws-account-id>.dkr.ecr.<region>.amazonaws.com/whatever
+            sh "docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/example/example-image:1.0"
         }
     }
 }

@@ -4,10 +4,13 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"regexp"
@@ -48,13 +51,15 @@ func main() {
 		showVersion()
 
 	case "get":
-		if len(args) != 2 {
-			showUsage(1) // Server URL not supplied
+		payload, err := readPayload(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "No payload received: %s\n", err)
+			os.Exit(1)
 		}
 
-		server, err := url.Parse(args[1])
+		server, err := url.Parse(payload)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse server address: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Failed to parse server address payload: %s\n", err)
 			os.Exit(1)
 		}
 		credential, ok := lookupEnvCredential(server.Hostname())
@@ -73,6 +78,10 @@ func main() {
 		os.Stdout.WriteString("\n")
 		os.Exit(0)
 
+	case "store", "erase":
+		fmt.Fprintf(os.Stderr, "%s is not implemented\n", args[0])
+		os.Exit(0)
+
 	default:
 		fmt.Fprintf(os.Stderr, "The 'env' credential helper is not able to %s credentials.\n", args[0])
 		os.Exit(1)
@@ -88,6 +97,22 @@ func showUsage(exitCode int) {
 	fmt.Fprintln(os.Stderr, "Usage: docker-credential-env get <hostname>")
 	fmt.Fprintln(os.Stderr, "\nThis is a Docker credential helper, not intended to be run directly from a shell.")
 	os.Exit(exitCode)
+}
+
+func readPayload(reader io.Reader) (payload string, err error) {
+	scanner := bufio.NewScanner(reader)
+
+	buffer := new(bytes.Buffer)
+	for scanner.Scan() {
+		buffer.Write(scanner.Bytes())
+	}
+
+	if err = scanner.Err(); err != nil && err != io.EOF {
+		return
+	}
+
+	payload = strings.TrimSpace(buffer.String())
+	return
 }
 
 // lookupEnvCredential searches the environment looking Docker registry credentials for hostname,
