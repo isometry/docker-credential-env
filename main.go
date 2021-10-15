@@ -1,28 +1,5 @@
 // docker-credentials-env is a Docker credentials helper that reads
 // credentials from the process environment.
-//
-// Specifically, it expects to find environment variables with the prefix
-// DOCKER_ followed by the requested hostname, and lastly the suffixes
-// _USR for username and _PSW for password, such as
-// DOCKER_hub_docker_com_USR and DOCKER_hub_docker_com_PSW for Docker Hub.
-//
-// In order to streamline interaction with (e.g.) AWS ECR, in addition to
-// looking for the full registry hostname, it will also incrementally strip
-// DNS label components from the right. For example, in search for credentials
-// for the ECR registry at https://1234.dkr.ecr.us-east-1.amazonaws.com, the
-// following environment variables will be searched in order:
-//  - DOCKER_1234_dkr_ecr_us-east-1_amazonaws_com_USR
-//  - DOCKER_dkr_ecr_us-east-1_amazonaws_com_USR
-//  - DOCKER_ecr_us-east-1_amazonaws_com_USR
-//  - DOCKER_us-east-1_amazonaws_com_USR
-//  - DOCKER_amazonaws_com_USR
-//  - DOCKER_com_USR
-//  - DOCKER__USR
-//
-// This naming convention is intended to streamline use in Jenkins Pipelines:
-// environment {
-//   DOCKER_hub_docker_com = credentials('hub.docker.com')
-// }
 
 package main
 
@@ -40,11 +17,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 )
 
-var GitCommit = ""
-var Version = "0.0.0"
-var PreRelease = "dev"
-
-var ecrHostname = regexp.MustCompile(`^[0-9]\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`)
+var (
+	version     = "0.0.0"
+	commit      = "none"
+	date        = "unknown"
+	ecrHostname = regexp.MustCompile(`^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`)
+)
 
 const (
 	envPrefix         = "DOCKER"
@@ -55,19 +33,25 @@ const (
 
 type Credential struct {
 	Username string `json:"Username"`
-	Password string `json:"Secret"`
+	Secret   string `json:"Secret"`
 }
 
 func main() {
 	args := os.Args[1:]
-	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "Usage: docker-credential-env get <hostname>")
-		fmt.Fprintln(os.Stderr, "\nThis is a Docker credential helper, not intended to be run directly from a shell.")
-		os.Exit(1)
+
+	if len(args) == 0 {
+		showUsage(0)
 	}
 
 	switch args[0] {
+	case "--version":
+		showVersion()
+
 	case "get":
+		if len(args) != 2 {
+			showUsage(1) // Server URL not supplied
+		}
+
 		server, err := url.Parse(args[1])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to parse server address: %s\n", err)
@@ -95,6 +79,17 @@ func main() {
 	}
 }
 
+func showVersion() {
+	fmt.Printf("docker-credential-env %s (%s), %s\n", version, commit, date)
+	os.Exit(0)
+}
+
+func showUsage(exitCode int) {
+	fmt.Fprintln(os.Stderr, "Usage: docker-credential-env get <hostname>")
+	fmt.Fprintln(os.Stderr, "\nThis is a Docker credential helper, not intended to be run directly from a shell.")
+	os.Exit(exitCode)
+}
+
 // lookupEnvCredential searches the environment looking Docker registry credentials for hostname,
 // stripping least-significant DNS labels on failure
 func lookupEnvCredential(hostname string) (credential Credential, found bool) {
@@ -104,7 +99,7 @@ func lookupEnvCredential(hostname string) (credential Credential, found bool) {
 		envUsername := strings.Join([]string{envPrefix, envHostname, envUsernameSuffix}, envSeparator)
 		envPassword := strings.Join([]string{envPrefix, envHostname, envPasswordSuffix}, envSeparator)
 		if credential.Username, found = os.LookupEnv(envUsername); found {
-			if credential.Password, found = os.LookupEnv(envPassword); found {
+			if credential.Secret, found = os.LookupEnv(envPassword); found {
 				break
 			}
 		}
@@ -136,9 +131,13 @@ func getEcrToken(region string) (credential Credential, err error) {
 	for _, authData := range output.AuthorizationData {
 		// authData.AuthorizationToken is a base64-encoded username:password string,
 		// where the username is always expected to be "AWS".
-		tokenBytes, _ := base64.StdEncoding.DecodeString(*authData.AuthorizationToken)
+		var tokenBytes []byte
+		tokenBytes, err = base64.StdEncoding.DecodeString(*authData.AuthorizationToken)
+		if err != nil {
+			return
+		}
 		token := strings.SplitN(string(tokenBytes), ":", 1)
-		credential.Username, credential.Password = token[0], token[1]
+		credential.Username, credential.Secret = token[0], token[1]
 	}
 	return
 }
