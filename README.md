@@ -29,24 +29,21 @@ In `~/.docker/config.json`:
 ## Example Usage
 
 ```groovy
+environment {
+    DOCKER_hub_docker_com = credentials('hub.docker.com') // Username-Password credential
+    AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID') // String credential
+    AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY') // String credential
+}
 
 stages {
     stage("Upload Image to Docker Hub") {
-        environment {
-            DOCKER_hub_docker_com = credentials('hub.docker.com')
-        }
         steps {
-            sh "docker push ${image1}"
+            sh "docker push ${image1}" // image1 tagged with hub.docker.com/whatever
         }
     }
     stage("Upload Image to AWS-ECR") {
         steps {
-            withCredentials([
-                string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-            ]) {
-                sh "docker push ${image2}"
-            }
+            sh "docker push ${image2}" // image2 tagged with <aws-account-id>.dkr.ecr.<region>.amazonaws.com/whatever
         }
     }
 }
