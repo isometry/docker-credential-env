@@ -17,14 +17,25 @@ If no environment variables for the target repository's FQDN is found, then:
 
 ## Configuration
 
-The `docker-credential-env` binary must be installed to `$PATH`.
-In `~/.docker/config.json`:
+The `docker-credential-env` binary must be installed to `$PATH`, configured via `~/.docker/config.json`:
 
-```json
-{
-  "credsStore": "env"
-}
-```
+* Handle all docker authentication:
+
+  ```json
+  {
+    "credsStore": "env"
+  }
+  ```
+
+* Handle docker authentication for specific repositories:
+
+  ```json
+  {
+    "credHelpers": {
+      "artifactory.example.com": "env"
+    }
+  }
+  ```
 
 ## Example Usage
 
