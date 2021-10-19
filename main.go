@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/docker/docker-credential-helpers/credentials"
+	docker_credentials "github.com/docker/docker-credential-helpers/credentials"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
@@ -22,17 +22,18 @@ import (
 var ecrHostname = regexp.MustCompile(`^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`)
 
 const (
+	defaultScheme     = "https://"
 	envPrefix         = "DOCKER"
 	envUsernameSuffix = "USR"
 	envPasswordSuffix = "PSW"
 	envSeparator      = "_"
 )
 
-// Env implements credentials.
+// Env implements the Docker credentials Helper interface.
 type Env struct{}
 
 // Add implements the set verb
-func (*Env) Add(*credentials.Credentials) error {
+func (*Env) Add(*docker_credentials.Credentials) error {
 	return errors.New("store is unsupported")
 }
 
@@ -52,7 +53,7 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 		server *url.URL
 		found  bool
 	)
-	server, err = url.Parse(serverURL)
+	server, err = url.Parse(defaultScheme + strings.TrimPrefix(serverURL, defaultScheme))
 	if err != nil {
 		return
 	}
@@ -83,11 +84,10 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 
 func getEcrToken(region string) (username, password string, err error) {
 	ctx := context.TODO()
-	cfg, err := config.LoadDefaultConfig(ctx) // includes authentication-via-environment
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region)) // includes authentication-via-environment
 	if err != nil {
 		return
 	}
-	cfg.Region = region
 
 	client := ecr.NewFromConfig(cfg)
 
@@ -103,12 +103,12 @@ func getEcrToken(region string) (username, password string, err error) {
 		if err != nil {
 			return
 		}
-		token := bytes.SplitN(tokenBytes, []byte{':'}, 1)
+		token := bytes.SplitN(tokenBytes, []byte{':'}, 2)
 		username, password = string(token[0]), string(token[1])
 	}
 	return
 }
 
 func main() {
-	credentials.Serve(&Env{})
+	docker_credentials.Serve(&Env{})
 }
