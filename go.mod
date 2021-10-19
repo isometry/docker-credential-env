@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.8.3
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.7.1
+	github.com/docker/docker-credential-helpers v0.6.4
 )
 
 require (
