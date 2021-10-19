@@ -15,8 +15,11 @@ import (
 
 	docker_credentials "github.com/docker/docker-credential-helpers/credentials"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 var ecrHostname = regexp.MustCompile(`^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`)
@@ -75,18 +78,23 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 
 	if ecrHostname.MatchString(hostname) {
 		// This is an AWS ECR Docker Registry: <account-id>.dkr.ecr.<region>.amazonaws.com
-		region := labels[3]
-		username, password, err = getEcrToken(region)
+		username, password, err = getEcrToken()
 	}
 
 	return
 }
 
-func getEcrToken(region string) (username, password string, err error) {
+func getEcrToken() (username, password string, err error) {
 	ctx := context.TODO()
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region)) // includes authentication-via-environment
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return
+	}
+
+	if roleArn := getRoleArn(cfg.ConfigSources...); roleArn != "" {
+		stsSvc := sts.NewFromConfig(cfg)
+		creds := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
+		cfg.Credentials = aws.NewCredentialsCache(creds)
 	}
 
 	client := ecr.NewFromConfig(cfg)
@@ -106,6 +114,23 @@ func getEcrToken(region string) (username, password string, err error) {
 		token := bytes.SplitN(tokenBytes, []byte{':'}, 2)
 		username, password = string(token[0]), string(token[1])
 	}
+	return
+}
+
+func getRoleArn(configSources ...interface{}) (roleARN string) {
+	for _, x := range configSources {
+		switch impl := x.(type) {
+		case config.EnvConfig:
+			if impl.RoleARN != "" {
+				return strings.TrimSpace(impl.RoleARN)
+			}
+		case config.SharedConfig:
+			if impl.RoleARN != "" {
+				return strings.TrimSpace(impl.RoleARN)
+			}
+		}
+	}
+
 	return
 }
 
