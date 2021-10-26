@@ -213,17 +213,33 @@ func TestEnvNotSupportedMethods(t *testing.T) {
 		}
 	})
 
+	t.Run("Add is ignored with IGNORE_DOCKER_LOGIN", func(t *testing.T) {
+		t.Setenv(envIgnoreLogin, "1")
+		actualErr := e.Add(nil)
+		if actualErr != nil {
+			t.Errorf("Add() actual = (%v), expected (%v)", actualErr, nil)
+		}
+	})
+
 	t.Run("Delete is not supported", func(t *testing.T) {
 		actualErr := e.Delete("")
 		if !errors.Is(actualErr, &NotSupportedError{}) {
-			t.Errorf("Add() actual = (%v), expected (%v)", actualErr, &NotSupportedError{})
+			t.Errorf("Delete() actual = (%v), expected (%v)", actualErr, &NotSupportedError{})
+		}
+	})
+
+	t.Run("Delete is ignored with IGNORE_DOCKER_LOGIN", func(t *testing.T) {
+		t.Setenv(envIgnoreLogin, "1")
+		actualErr := e.Delete("")
+		if actualErr != nil {
+			t.Errorf("Delete() actual = (%v), expected (%v)", actualErr, nil)
 		}
 	})
 
 	t.Run("List is not supported", func(t *testing.T) {
 		_, actualErr := e.List()
 		if !errors.Is(actualErr, &NotSupportedError{}) {
-			t.Errorf("Add() actual = (%v), expected (%v)", actualErr, &NotSupportedError{})
+			t.Errorf("List() actual = (%v), expected (%v)", actualErr, &NotSupportedError{})
 		}
 	})
 }

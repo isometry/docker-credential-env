@@ -26,6 +26,7 @@ const (
 	envUsernameSuffix = "USR"
 	envPasswordSuffix = "PSW"
 	envSeparator      = "_"
+	envIgnoreLogin    = "IGNORE_DOCKER_LOGIN"
 )
 
 type NotSupportedError struct{}
@@ -39,12 +40,22 @@ type Env struct{}
 
 // Add implements the set verb
 func (*Env) Add(*docker_credentials.Credentials) error {
-	return fmt.Errorf("add: %w", &NotSupportedError{})
+	switch {
+	case os.Getenv(envIgnoreLogin) != "":
+		return nil
+	default:
+		return fmt.Errorf("add: %w", &NotSupportedError{})
+	}
 }
 
 // Delete implements the erase verb
 func (*Env) Delete(string) error {
-	return fmt.Errorf("delete: %w", &NotSupportedError{})
+	switch {
+	case os.Getenv(envIgnoreLogin) != "":
+		return nil
+	default:
+		return fmt.Errorf("delete: %w", &NotSupportedError{})
+	}
 }
 
 // List implements the list verb

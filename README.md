@@ -39,6 +39,8 @@ The `docker-credential-env` binary must be installed to `$PATH`, configured via 
   }
   ```
 
+By default, attempts to explicitly `docker {login,logout}` will generate an error. To ignore these errors, set the environment variable `IGNORE_DOCKER_LOGIN=1`.
+
 ## Example Usage
 
 ### Jenkins
