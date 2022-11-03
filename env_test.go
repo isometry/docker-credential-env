@@ -36,6 +36,11 @@ func TestGetHostname(t *testing.T) {
 			input:    "example.com/path",
 			expected: "example.com",
 		},
+		{
+			name:     "Full URL with scheme and hyphen",
+			input:    "https://example-hyphen.com/path",
+			expected: "example-hyphen.com",
+		},
 	}
 
 	for _, tt := range tests {
@@ -133,6 +138,11 @@ func TestGetEnvCredentials(t *testing.T) {
 			expected: output{username: "u", password: "p", found: true},
 		},
 		{
+			name:     "Hyphen-domain",
+			input:    "repo-example.com",
+			expected: output{username: "", password: "", found: false},
+		},
+		{
 			name:     "Different domain",
 			input:    "example.net",
 			expected: output{username: "", password: "", found: false},
@@ -183,6 +193,16 @@ func TestEnvGet(t *testing.T) {
 			name:     "Subdomain without creds",
 			input:    "https://other.example.com",
 			expected: output{username: "u1", password: "p1", err: nil},
+		},
+		{
+			name:     "Hyphen-domain with creds",
+			input:    "https://repo-example.com",
+			expected: output{username: "u2", password: "p2", err: nil},
+		},
+		{
+			name:     "Hyphen-domain without creds",
+			input:    "https://other-example.com",
+			expected: output{username: "", password: "", err: nil},
 		},
 	}
 

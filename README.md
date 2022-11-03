@@ -17,6 +17,8 @@ If no environment variables for the target repository's FQDN is found, then:
 `DOCKER_repo_example_com_USR` => `DOCKER_example_com_USR` => `DOCKER_com_USR` => `DOCKER__USR`.
 2. If the target repository is a private AWS ECR repository (FQDN matches the regex `^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`), it will attempt to exchange local AWS credentials (most likely exposed through `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables) for short-lived ECR login credentials, including automatic sts:AssumeRole if `role_arn` is specified (e.g. via `AWS_ROLE_ARN`).
 
+Hyphens within DNS labels are transformed to underscores (`s/-/_/g`) for the purposes of credential lookup.
+
 ## Configuration
 
 The `docker-credential-env` binary must be installed to `$PATH`, configured via `~/.docker/config.json`:
