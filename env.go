@@ -115,6 +115,7 @@ func getEnvVariables(labels []string, offset int) (envUsername, envPassword stri
 }
 
 func getEnvCredentials(hostname string) (username, password string, found bool) {
+	hostname = strings.ReplaceAll(hostname, "-", "_")
 	labels := strings.Split(hostname, ".")
 
 	for i := 0; i <= len(labels); i++ {
