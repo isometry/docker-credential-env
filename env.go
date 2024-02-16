@@ -19,6 +19,7 @@ import (
 )
 
 var ecrHostname = regexp.MustCompile(`^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`)
+var ghcrHostname = regexp.MustCompile(`^ghcr\.io$`)
 
 const (
 	defaultScheme     = "https://"
@@ -82,6 +83,15 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 	if ecrHostname.MatchString(hostname) {
 		// This is an AWS ECR Docker Registry: <account-id>.dkr.ecr.<region>.amazonaws.com
 		username, password, err = getEcrToken()
+		return
+	}
+
+	if ghcrHostname.MatchString(hostname) {
+		// This is a GitHub Container Registry: ghcr.io
+		if token, found := os.LookupEnv("GITHUB_TOKEN"); found {
+			username = "github"
+			password = token
+		}
 		return
 	}
 

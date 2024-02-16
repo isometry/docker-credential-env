@@ -204,6 +204,11 @@ func TestEnvGet(t *testing.T) {
 			input:    "https://other-example.com",
 			expected: output{username: "", password: "", err: nil},
 		},
+		{
+			name:     "GitHub Container Registry",
+			input:    "https://ghcr.io",
+			expected: output{username: "", password: "t1", err: nil},
+		},
 	}
 
 	e := Env{}
@@ -212,6 +217,7 @@ func TestEnvGet(t *testing.T) {
 	t.Setenv("DOCKER_example_com_PSW", "p1")
 	t.Setenv("DOCKER_repo_example_com_USR", "u2")
 	t.Setenv("DOCKER_repo_example_com_PSW", "p2")
+	t.Setenv("GITHUB_TOKEN", "t1")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
