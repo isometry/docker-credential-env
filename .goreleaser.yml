@@ -1,3 +1,4 @@
+version: 2
 before:
   hooks:
     - go mod tidy
@@ -41,7 +42,7 @@ brews:
       owner: isometry
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    folder: Formula
+    directory: Formula
     description: Environment-driven Docker credential helper
     homepage: https://just.breathe.io/project/docker-credential-env/
     test: |
