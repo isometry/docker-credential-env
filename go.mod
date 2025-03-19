@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.62
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.42.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.17
-	github.com/docker/docker-credential-helpers v0.9.2
+	github.com/docker/docker-credential-helpers v0.9.3
 )
 
 require (
