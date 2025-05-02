@@ -1,6 +1,6 @@
 module github.com/isometry/docker-credential-env
 
-go 1.22.0
+go 1.24.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
