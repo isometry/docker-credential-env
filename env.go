@@ -16,9 +16,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	docker_credentials "github.com/docker/docker-credential-helpers/credentials"
+	"github.com/isometry/docker-credential-env/provider"
 )
 
-var ecrHostname = regexp.MustCompile(`^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`)
+var ecrHostname = regexp.MustCompile(`^(?P<account>[0-9]+)\.dkr\.ecr\.(?P<region>[-a-z0-9]+)\.amazonaws\.com$`)
 var ghcrHostname = regexp.MustCompile(`^ghcr\.io$`)
 
 const (
@@ -80,9 +81,11 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 		return
 	}
 
-	if ecrHostname.MatchString(hostname) {
-		// This is an AWS ECR Docker Registry: <account-id>.dkr.ecr.<region>.amazonaws.com
-		username, password, err = getEcrToken()
+	submatches := ecrHostname.FindStringSubmatch(hostname)
+	if submatches != nil {
+		account := submatches[ecrHostname.SubexpIndex("account")]
+		region := submatches[ecrHostname.SubexpIndex("region")]
+		username, password, err = getEcrToken(hostname, account, region) // Assuming getEcrToken now takes account and region
 		return
 	}
 
@@ -140,9 +143,17 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 	return
 }
 
-func getEcrToken() (username, password string, err error) {
+func getEcrToken(hostname, account, region string) (username, password string, err error) {
+	// Construct the custom ENV provider
+	envProvider := &provider.AccountRegionEnv{
+		Hostname:  hostname,
+		AccountID: account,
+		Region:    region,
+	}
+
 	ctx := context.TODO()
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithCredentialsProvider(aws.NewCredentialsCache(envProvider)))
 	if err != nil {
 		return
 	}
@@ -173,7 +184,7 @@ func getEcrToken() (username, password string, err error) {
 	return
 }
 
-func getRoleArn(configSources ...interface{}) (roleARN string) {
+func getRoleArn(configSources ...any) (roleARN string) {
 	for _, x := range configSources {
 		switch impl := x.(type) {
 		case config.EnvConfig:

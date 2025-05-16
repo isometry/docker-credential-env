@@ -207,7 +207,7 @@ func TestEnvGet(t *testing.T) {
 		{
 			name:     "GitHub Container Registry",
 			input:    "https://ghcr.io",
-			expected: output{username: "", password: "t1", err: nil},
+			expected: output{username: "github", password: "t1", err: nil},
 		},
 	}
 
