@@ -6,7 +6,7 @@ All OCI registry clients that support `~/.docker/config.json` are supported, inc
 
 In addition to handling basic username:password credentials, the credential helper also includes special support for:
 
-* Amazon Elastic Container Registry (ECR) repositories using [standard AWS credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html), including automatic cross-account role assumption.
+* Amazon Elastic Container Registry (ECR) repositories using [standard AWS credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html), including automatic cross-account role assumption. This also includes an opt-in mechanism for using AWS credentials suffixed by account ID and region.
 * [GitHub Packages](https://ghcr.io/) via the common `GITHUB_TOKEN` environment variable.
 
 ## Environment Variables
@@ -19,10 +19,17 @@ For the docker repository `https://repo.example.com/v1`, the credential helper e
 If no environment variables for the target repository's FQDN is found, then:
 
 1. The helper will remove DNS labels from the FQDN one-at-a-time from the right, and look again, for example:
-`DOCKER_repo_example_com_USR` => `DOCKER_example_com_USR` => `DOCKER_com_USR` => `DOCKER__USR`.
-2. If the target repository is a private AWS ECR repository (FQDN matches the regex `^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`), it will attempt to exchange local AWS credentials (most likely exposed through `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables) for short-lived ECR login credentials, including automatic sts:AssumeRole if `role_arn` is specified (e.g. via `AWS_ROLE_ARN`).
+   `DOCKER_repo_example_com_USR` => `DOCKER_example_com_USR` => `DOCKER_com_USR` => `DOCKER__USR`.
+2. If the target repository is a private AWS ECR repository (FQDN matches the regex `^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`):
+* By default, it will attempt to exchange local AWS credentials (most likely exposed through `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables) for short-lived ECR login credentials, including automatic sts:AssumeRole if `role_arn` is specified (e.g. via `AWS_ROLE_ARN`).
+* **Account/Region Suffixed Credentials**: The helper can also use AWS credentials from environment variables suffixed with a specific AWS Account ID and Region. These credentials are expected to be in the format:
+    * `AWS_ACCESS_KEY_ID_<account_id>_<region>`
+    * `AWS_SECRET_ACCESS_KEY_<account_id>_<region>`
+    * `AWS_SESSION_TOKEN_<account_id>_<region>` (optional)
 
-Hyphens within DNS labels are transformed to underscores (`s/-/_/g`) for the purposes of credential lookup.
+  Important note: Fallback to standard AWS credentials will only occur if NO suffixed variables are found at all. If any suffixed credentials are present (even partially), the helper will require ALL mandatory suffixed credentials to be available.
+
+Hyphens within DNS labels are transformed to underscores (`s/-/_/g`) for credential lookup.
 
 ## Configuration
 
@@ -41,7 +48,8 @@ The `docker-credential-env` binary must be installed to `$PATH`, and is enabled 
   ```json
   {
     "credHelpers": {
-      "artifactory.example.com": "env"
+      "artifactory.example.com": "env",
+      "123456789012.dkr.ecr.us-east-1.amazonaws.com": "env"
     }
   }
   ```
@@ -72,7 +80,7 @@ stages {
         }
     }
 
-    stage('Push Image to AWS-ECR') {
+    stage('Push Image to AWS-ECR (Standard Credentials)') {
         environment {
             // any standard AWS authentication mechanisms are supported
             AWS_ROLE_ARN          = 'arn:aws:iam::123456789:role/jenkins-user' // triggers automatic sts:AssumeRole
@@ -86,7 +94,21 @@ stages {
         }
     }
 
-      stage('Push Image to GHCR') {
+    stage('Push Image to AWS-ECR (Account/Region Suffixed Credentials)') {
+        environment {
+            // Make sure to include all required suffixed credentials
+            AWS_ACCESS_KEY_ID_987654321098_eu_west_1     = credentials('AWS_ACCESS_KEY_ID') // String credential
+            AWS_SECRET_ACCESS_KEY_987654321098_eu_west_1 = credentials('AWS_SECRET_ACCESS_KEY') // String credential
+            // AWS_SESSION_TOKEN_987654321098_eu_west_1  = credentials('AWS_SESSION_TOKEN') // Optional
+        }
+        steps {
+            sh '''
+              docker push 987654321098.dkr.ecr.eu-west-1.amazonaws.com/another-example/another-image:2.0
+            '''
+        }
+    }
+
+    stage('Push Image to GHCR') {
         environment {
             GITHUB_TOKEN = credentials('github') // String credential
         }
@@ -94,6 +116,5 @@ stages {
             sh 'docker push ghcr.io/example/example-image:1.0'
         }
     }
-
 }
 ```

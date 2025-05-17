@@ -15,10 +15,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+
 	docker_credentials "github.com/docker/docker-credential-helpers/credentials"
+
+	"github.com/isometry/docker-credential-env/provider"
 )
 
-var ecrHostname = regexp.MustCompile(`^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`)
+var ecrHostname = regexp.MustCompile(`^(?P<account>[0-9]+)\.dkr\.ecr\.(?P<region>[-a-z0-9]+)\.amazonaws\.com$`)
 var ghcrHostname = regexp.MustCompile(`^ghcr\.io$`)
 
 const (
@@ -30,6 +33,7 @@ const (
 	envIgnoreLogin    = "IGNORE_DOCKER_LOGIN"
 )
 
+// NotSupportedError represents an error indicating that the operation is not supported.
 type NotSupportedError struct{}
 
 func (m *NotSupportedError) Error() string {
@@ -39,7 +43,7 @@ func (m *NotSupportedError) Error() string {
 // Env implements the Docker credentials Helper interface.
 type Env struct{}
 
-// Add implements the set verb
+// Add implements the set verb.
 func (*Env) Add(*docker_credentials.Credentials) error {
 	switch {
 	case os.Getenv(envIgnoreLogin) != "":
@@ -49,7 +53,7 @@ func (*Env) Add(*docker_credentials.Credentials) error {
 	}
 }
 
-// Delete implements the erase verb
+// Delete implements the erase verb.
 func (*Env) Delete(string) error {
 	switch {
 	case os.Getenv(envIgnoreLogin) != "":
@@ -59,12 +63,12 @@ func (*Env) Delete(string) error {
 	}
 }
 
-// List implements the list verb
+// List implements the list verb.
 func (*Env) List() (map[string]string, error) {
 	return nil, fmt.Errorf("list: %w", &NotSupportedError{})
 }
 
-// Get implements the get verb
+// Get implements the get verb.
 func (e *Env) Get(serverURL string) (username string, password string, err error) {
 	var (
 		hostname string
@@ -80,9 +84,11 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 		return
 	}
 
-	if ecrHostname.MatchString(hostname) {
-		// This is an AWS ECR Docker Registry: <account-id>.dkr.ecr.<region>.amazonaws.com
-		username, password, err = getEcrToken()
+	submatches := ecrHostname.FindStringSubmatch(hostname)
+	if submatches != nil {
+		account := submatches[ecrHostname.SubexpIndex("account")]
+		region := submatches[ecrHostname.SubexpIndex("region")]
+		username, password, err = getEcrToken(hostname, account, region) // Assuming getEcrToken now takes account and region
 		return
 	}
 
@@ -140,9 +146,17 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 	return
 }
 
-func getEcrToken() (username, password string, err error) {
+func getEcrToken(hostname, account, region string) (username, password string, err error) {
+	// Construct the custom ENV provider
+	envProvider := &provider.AccountRegionEnv{
+		Hostname:  hostname,
+		AccountID: account,
+		Region:    region,
+	}
+
 	ctx := context.TODO()
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithCredentialsProvider(aws.NewCredentialsCache(envProvider)))
 	if err != nil {
 		return
 	}
@@ -173,7 +187,7 @@ func getEcrToken() (username, password string, err error) {
 	return
 }
 
-func getRoleArn(configSources ...interface{}) (roleARN string) {
+func getRoleArn(configSources ...any) (roleARN string) {
 	for _, x := range configSources {
 		switch impl := x.(type) {
 		case config.EnvConfig:
