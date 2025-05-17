@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -37,7 +38,7 @@ func TestAccountRegionEnv_Retrieve(t *testing.T) {
 			name:        "Missing access key with session token present",
 			accountID:   "123456789012",
 			region:      "us-east-1",
-			expectedErr: fmt.Errorf("AccountRegionEnv: environment variable AWS_ACCESS_KEY_ID_123456789012_us_east_1 not found"),
+			expectedErr: errors.New("AccountRegionEnv: environment variable AWS_ACCESS_KEY_ID_123456789012_us_east_1 not found"),
 			envVars: map[string]string{
 				"AWS_SESSION_TOKEN_123456789012_us_east_1":     "AQoEXAMPLEH4...",
 				"AWS_SECRET_ACCESS_KEY_123456789012_us_east_1": "wJalr...",
@@ -47,7 +48,7 @@ func TestAccountRegionEnv_Retrieve(t *testing.T) {
 			name:        "Missing secret key with access key present",
 			accountID:   "123456789012",
 			region:      "us-east-1",
-			expectedErr: fmt.Errorf("AccountRegionEnv: environment variable AWS_SECRET_ACCESS_KEY_123456789012_us_east_1 not found"),
+			expectedErr: errors.New("AccountRegionEnv: environment variable AWS_SECRET_ACCESS_KEY_123456789012_us_east_1 not found"),
 			envVars: map[string]string{
 				"AWS_ACCESS_KEY_ID_123456789012_us_east_1": "AKIA...",
 			},
@@ -56,7 +57,7 @@ func TestAccountRegionEnv_Retrieve(t *testing.T) {
 			name:        "Missing both keys - fallback to standard AWS credentials",
 			accountID:   "123456789012",
 			region:      "us-east-1",
-			expectedErr: fmt.Errorf("AccountRegionEnv: no account/region credentials found and standard AWS_ACCESS_KEY_ID not found"),
+			expectedErr: errors.New("AccountRegionEnv: no account/region credentials found and standard AWS_ACCESS_KEY_ID not found"),
 		},
 		{
 			name:      "Valid credentials in FedRAMP",
@@ -89,7 +90,7 @@ func TestAccountRegionEnv_Retrieve(t *testing.T) {
 				Region:    tc.region,
 			}
 
-			creds, err := provider.Retrieve(nil)
+			creds, err := provider.Retrieve(t.Context())
 			if tc.expectedErr != nil {
 				if err == nil {
 					t.Errorf("expected error but got none")

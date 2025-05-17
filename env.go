@@ -15,7 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+
 	docker_credentials "github.com/docker/docker-credential-helpers/credentials"
+
 	"github.com/isometry/docker-credential-env/provider"
 )
 
@@ -31,6 +33,7 @@ const (
 	envIgnoreLogin    = "IGNORE_DOCKER_LOGIN"
 )
 
+// NotSupportedError represents an error indicating that the operation is not supported.
 type NotSupportedError struct{}
 
 func (m *NotSupportedError) Error() string {
@@ -40,7 +43,7 @@ func (m *NotSupportedError) Error() string {
 // Env implements the Docker credentials Helper interface.
 type Env struct{}
 
-// Add implements the set verb
+// Add implements the set verb.
 func (*Env) Add(*docker_credentials.Credentials) error {
 	switch {
 	case os.Getenv(envIgnoreLogin) != "":
@@ -50,7 +53,7 @@ func (*Env) Add(*docker_credentials.Credentials) error {
 	}
 }
 
-// Delete implements the erase verb
+// Delete implements the erase verb.
 func (*Env) Delete(string) error {
 	switch {
 	case os.Getenv(envIgnoreLogin) != "":
@@ -60,12 +63,12 @@ func (*Env) Delete(string) error {
 	}
 }
 
-// List implements the list verb
+// List implements the list verb.
 func (*Env) List() (map[string]string, error) {
 	return nil, fmt.Errorf("list: %w", &NotSupportedError{})
 }
 
-// Get implements the get verb
+// Get implements the get verb.
 func (e *Env) Get(serverURL string) (username string, password string, err error) {
 	var (
 		hostname string

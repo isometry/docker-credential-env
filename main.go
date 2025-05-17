@@ -1,6 +1,7 @@
 // docker-credentials-env is a Docker credentials helper that reads
 // credentials from the process environment.
 
+// Package main is the entry point for `docker-credential-env`.
 package main
 
 import (

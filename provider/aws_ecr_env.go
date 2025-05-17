@@ -1,7 +1,9 @@
+// Package provider offers custom credential provider implementations
 package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -29,7 +31,7 @@ type AccountRegionEnv struct {
 // This method is part of the aws.CredentialsProvider interface.
 func (p *AccountRegionEnv) Retrieve(_ context.Context) (out aws.Credentials, err error) {
 	if p.AccountID == "" || p.Region == "" {
-		return aws.Credentials{}, fmt.Errorf("AccountRegionEnv: AccountID and Region must be set")
+		return aws.Credentials{}, errors.New("AccountRegionEnv: AccountID and Region must be set")
 	}
 
 	defer func() {
@@ -76,10 +78,10 @@ func (p *AccountRegionEnv) Retrieve(_ context.Context) (out aws.Credentials, err
 
 	// Check if standard credentials are available
 	if accessKeyID == "" {
-		return aws.Credentials{}, fmt.Errorf("AccountRegionEnv: no account/region credentials found and standard AWS_ACCESS_KEY_ID not found")
+		return aws.Credentials{}, errors.New("AccountRegionEnv: no account/region credentials found and standard AWS_ACCESS_KEY_ID not found")
 	}
 	if secretAccessKey == "" {
-		return aws.Credentials{}, fmt.Errorf("AccountRegionEnv: no account/region credentials found and standard AWS_SECRET_ACCESS_KEY not found")
+		return aws.Credentials{}, errors.New("AccountRegionEnv: no account/region credentials found and standard AWS_SECRET_ACCESS_KEY not found")
 	}
 
 	out = aws.Credentials{

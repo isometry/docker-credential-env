@@ -222,7 +222,7 @@ func TestEnvGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actualUsername, actualPassword, actualErr := e.Get(tt.input)
-			if actualUsername != tt.expected.username || actualPassword != tt.expected.password || actualErr != tt.expected.err {
+			if actualUsername != tt.expected.username || actualPassword != tt.expected.password || !errors.Is(actualErr, tt.expected.err) {
 				t.Errorf("Get(%v) actual = (%v, %v, %v), expected (%v, %v, %v)", tt.input, actualUsername, actualPassword, actualErr, tt.expected.username, tt.expected.password, tt.expected.err)
 			}
 		})
