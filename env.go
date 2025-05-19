@@ -87,8 +87,7 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 	submatches := ecrHostname.FindStringSubmatch(hostname)
 	if submatches != nil {
 		account := submatches[ecrHostname.SubexpIndex("account")]
-		region := submatches[ecrHostname.SubexpIndex("region")]
-		username, password, err = getEcrToken(hostname, account, region) // Assuming getEcrToken now takes account and region
+		username, password, err = getEcrToken(hostname, account) // Assuming getEcrToken now takes account and region
 		return
 	}
 
@@ -146,12 +145,11 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 	return
 }
 
-func getEcrToken(hostname, account, region string) (username, password string, err error) {
+func getEcrToken(hostname, account string) (username, password string, err error) {
 	// Construct the custom ENV provider
-	envProvider := &provider.AccountRegionEnv{
+	envProvider := &provider.AccountEnv{
 		Hostname:  hostname,
 		AccountID: account,
-		Region:    region,
 	}
 
 	ctx := context.TODO()
