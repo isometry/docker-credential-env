@@ -269,3 +269,46 @@ func TestEnvNotSupportedMethods(t *testing.T) {
 		}
 	})
 }
+
+func TestGetRoleArn(t *testing.T) {
+	tests := []struct {
+		name     string
+		inputEnv map[string]string
+		expected string
+	}{
+		{
+			name: "Standard environment variables",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/my-role",
+			},
+			expected: "arn:aws:iam::123456789012:role/my-role",
+		},
+		{
+			name: "Suffixed environment variables",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN_123456789012": "arn:aws:iam::123456789012:role/my-role",
+			},
+			expected: "arn:aws:iam::123456789012:role/my-role",
+		},
+		{
+			name: "Suffixed has higher priority",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN":              "arn:aws:iam::123456789012:role/other-role",
+				"AWS_ROLE_ARN_123456789012": "arn:aws:iam::123456789012:role/my-role",
+			},
+			expected: "arn:aws:iam::123456789012:role/my-role",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.inputEnv {
+				t.Setenv(k, v)
+			}
+			actual := getRoleArn("123456789012")
+			if actual != tt.expected {
+				t.Errorf("GetRoleArn(<account_id>) actual = (%v), expected (%v)", actual, tt.expected)
+			}
+		})
+	}
+}

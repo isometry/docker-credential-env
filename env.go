@@ -17,8 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	docker_credentials "github.com/docker/docker-credential-helpers/credentials"
-
-	"github.com/isometry/docker-credential-env/provider"
 )
 
 var ecrHostname = regexp.MustCompile(`^(?P<account>[0-9]+)\.dkr\.ecr\.(?P<region>[-a-z0-9]+)\.amazonaws\.com$`)
@@ -147,19 +145,20 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 
 func getEcrToken(hostname, account string) (username, password string, err error) {
 	// Construct the custom ENV provider
-	envProvider := &provider.AccountEnv{
+	envProvider := &accountEnv{
 		Hostname:  hostname,
 		AccountID: account,
 	}
 
 	ctx := context.TODO()
 	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(getRegion(account)),
 		config.WithCredentialsProvider(aws.NewCredentialsCache(envProvider)))
 	if err != nil {
 		return
 	}
 
-	if roleArn := getRoleArn(cfg.ConfigSources...); roleArn != "" {
+	if roleArn := getRoleArn(account, cfg.ConfigSources...); roleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
 		creds := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
 		cfg.Credentials = aws.NewCredentialsCache(creds)
@@ -185,7 +184,24 @@ func getEcrToken(hostname, account string) (username, password string, err error
 	return
 }
 
-func getRoleArn(configSources ...any) (roleARN string) {
+func getRegion(account string) string {
+	if region, found := os.LookupEnv("AWS_REGION_" + account); found {
+		return region
+	}
+	return os.Getenv("AWS_REGION")
+}
+
+// getRoleArn retrieves the AWS role ARN for a specific account by checking environment variables or provided configurations.
+func getRoleArn(account string, configSources ...any) (roleARN string) {
+	val, found := os.LookupEnv("AWS_ROLE_ARN_" + account)
+	if found {
+		return strings.TrimSpace(val)
+	}
+
+	if len(configSources) == 0 {
+		return os.Getenv("AWS_ROLE_ARN")
+	}
+
 	for _, x := range configSources {
 		switch impl := x.(type) {
 		case config.EnvConfig:

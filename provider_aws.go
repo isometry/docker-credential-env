@@ -1,7 +1,8 @@
 // Package provider offers custom credential provider implementations
-package provider
+package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
-// AccountEnv retrieves AWS credentials from environment variables
+// accountEnv retrieves AWS credentials from environment variables
 // that are suffixed with a specific AWS account ID.
 //
 // For example, if AccountID is "123456789012",,
@@ -18,22 +19,22 @@ import (
 // - AWS_ACCESS_KEY_ID_123456789012
 // - AWS_SECRET_ACCESS_KEY_123456789012
 // - AWS_SESSION_TOKEN_123456789012 (optional)
-type AccountEnv struct {
+type accountEnv struct {
 	Hostname  string
 	AccountID string
 }
 
 // Retrieve fetches the credentials.
 // This method is part of the aws.CredentialsProvider interface.
-func (p *AccountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error) {
+func (p *accountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error) {
 	if p.AccountID == "" {
-		return aws.Credentials{}, errors.New("AccountEnv: AccountID must be set")
+		return aws.Credentials{}, errors.New("accountEnv: AccountID must be set")
 	}
 
 	defer func() {
 		// Diagnostic output
 		if out.Source != "" {
-			_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to %q with %q", p.Hostname, out.Source)
+			_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to %q with %q\n", cmp.Or(p.Hostname, "n/a"), out.Source)
 		}
 	}()
 
@@ -49,10 +50,10 @@ func (p *AccountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 	if accessKeyID != "" || secretAccessKey != "" || sessionToken != "" {
 		// If using suffixed credentials, both access key and secret key must be present
 		if accessKeyID == "" {
-			return aws.Credentials{}, fmt.Errorf("AccountEnv: environment variable %s not found", "AWS_ACCESS_KEY_ID"+suffix)
+			return aws.Credentials{}, fmt.Errorf("accountEnv: environment variable %s not found", "AWS_ACCESS_KEY_ID"+suffix)
 		}
 		if secretAccessKey == "" {
-			return aws.Credentials{}, fmt.Errorf("AccountEnv: environment variable %s not found", "AWS_SECRET_ACCESS_KEY"+suffix)
+			return aws.Credentials{}, fmt.Errorf("accountEnv: environment variable %s not found", "AWS_SECRET_ACCESS_KEY"+suffix)
 		}
 
 		// Use only the suffixed credentials
@@ -60,7 +61,7 @@ func (p *AccountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 			AccessKeyID:     accessKeyID,
 			SecretAccessKey: secretAccessKey,
 			SessionToken:    sessionToken, // Session token is optional, can be empty
-			Source:          fmt.Sprintf("AccountEnv (Account: %s)", p.AccountID),
+			Source:          fmt.Sprintf("accountEnv (Account: %s)", p.AccountID),
 		}
 		return out, nil
 	}
@@ -72,10 +73,10 @@ func (p *AccountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 
 	// Check if standard credentials are available
 	if accessKeyID == "" {
-		return aws.Credentials{}, errors.New("AccountEnv: no account credentials found and standard AWS_ACCESS_KEY_ID not found")
+		return aws.Credentials{}, errors.New("accountEnv: no account credentials found and standard AWS_ACCESS_KEY_ID not found")
 	}
 	if secretAccessKey == "" {
-		return aws.Credentials{}, errors.New("AccountEnv: no account credentials found and standard AWS_SECRET_ACCESS_KEY not found")
+		return aws.Credentials{}, errors.New("accountEnv: no account credentials found and standard AWS_SECRET_ACCESS_KEY not found")
 	}
 
 	out = aws.Credentials{

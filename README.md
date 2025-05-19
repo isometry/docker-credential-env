@@ -26,6 +26,7 @@ If no environment variables for the target repository's FQDN is found, then:
     * `AWS_ACCESS_KEY_ID_<account_id>`
     * `AWS_SECRET_ACCESS_KEY_<account_id>`
     * `AWS_SESSION_TOKEN_<account_id>` (optional)
+    * `AWS_ROLE_ARN_<account_id>` (optional)
 
   Important note: Fallback to standard AWS credentials will only occur if NO suffixed variables are found at all. If any suffixed credentials are present (even partially), the helper will require ALL mandatory suffixed credentials to be available.
 
@@ -97,9 +98,10 @@ stages {
     stage('Push Image to AWS-ECR (Account Suffixed Credentials)') {
         environment {
             // Make sure to include all required suffixed credentials
-            AWS_ACCESS_KEY_ID_987654321098_eu_west_1     = credentials('AWS_ACCESS_KEY_ID') // String credential
-            AWS_SECRET_ACCESS_KEY_987654321098_eu_west_1 = credentials('AWS_SECRET_ACCESS_KEY') // String credential
-            // AWS_SESSION_TOKEN_987654321098_eu_west_1  = credentials('AWS_SESSION_TOKEN') // Optional
+            AWS_ROLE_ARN_987654321098          = credentials('AWS_ROLE_ARN') // String credential
+            AWS_ACCESS_KEY_ID_987654321098     = credentials('AWS_ACCESS_KEY_ID') // String credential
+            AWS_SECRET_ACCESS_KEY_987654321098 = credentials('AWS_SECRET_ACCESS_KEY') // String credential
+            // AWS_SESSION_TOKEN_987654321098  = credentials('AWS_SESSION_TOKEN') // Optional
         }
         steps {
             sh '''
