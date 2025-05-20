@@ -61,7 +61,7 @@ func (p *accountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 			AccessKeyID:     accessKeyID,
 			SecretAccessKey: secretAccessKey,
 			SessionToken:    sessionToken, // Session token is optional, can be empty
-			Source:          fmt.Sprintf("accountEnv (Account: %s)", p.AccountID),
+			Source:          fmt.Sprintf("Suffixed AWS Environment (Account: %s)", p.AccountID),
 		}
 		return out, nil
 	}

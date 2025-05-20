@@ -9,8 +9,10 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
@@ -150,8 +152,18 @@ func getEcrToken(hostname, account string) (username, password string, err error
 		AccountID: account,
 	}
 
+	// Set up the AWS SDK config with a custom retryer
+	simpleRetryer := func() aws.Retryer {
+		standardRetryer := retry.NewStandard(func(options *retry.StandardOptions) {
+			options.MaxAttempts = 10
+			options.MaxBackoff = time.Second * 30
+		})
+		return retry.AddWithMaxBackoffDelay(standardRetryer, time.Second*30)
+	}
+
 	ctx := context.TODO()
 	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRetryer(simpleRetryer),
 		config.WithRegion(getRegion(account)),
 		config.WithCredentialsProvider(aws.NewCredentialsCache(envProvider)))
 	if err != nil {
