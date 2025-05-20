@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
@@ -34,7 +35,9 @@ func (p *accountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 	defer func() {
 		// Diagnostic output
 		if out.Source != "" {
-			_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to %q with %q\n", cmp.Or(p.Hostname, "n/a"), out.Source)
+			if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
+				_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to %q with %q\n", cmp.Or(p.Hostname, "n/a"), out.Source)
+			}
 		}
 	}()
 

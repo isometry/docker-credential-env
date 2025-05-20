@@ -1,3 +1,4 @@
+
 # Docker Credentials from the Environment
 
 A [Docker credential helper](https://docs.docker.com/engine/reference/commandline/login/#credential-helpers) to streamline repository interactions in scenarios where the cacheing of credentials to `~/.docker/config.json` is undesirable, including CI/CD pipelines, or anywhere ephemeral credentials are used.
@@ -23,14 +24,18 @@ If no environment variables for the target repository's FQDN is found, then:
 2. If the target repository is a private AWS ECR repository (FQDN matches the regex `^[0-9]+\.dkr\.ecr\.[-a-z0-9]+\.amazonaws\.com$`):
 * By default, it will attempt to exchange local AWS credentials (most likely exposed through `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables) for short-lived ECR login credentials, including automatic sts:AssumeRole if `role_arn` is specified (e.g. via `AWS_ROLE_ARN`).
 * **Account Suffixed Credentials**: The helper can also use AWS credentials from environment variables suffixed with a specific AWS Account ID. These credentials are expected to be in the format:
-    * `AWS_ACCESS_KEY_ID_<account_id>`
-    * `AWS_SECRET_ACCESS_KEY_<account_id>`
-    * `AWS_SESSION_TOKEN_<account_id>` (optional)
-    * `AWS_ROLE_ARN_<account_id>` (optional)
+  * `AWS_ACCESS_KEY_ID_<account_id>`
+  * `AWS_SECRET_ACCESS_KEY_<account_id>`
+  * `AWS_SESSION_TOKEN_<account_id>` (optional)
+  * `AWS_ROLE_ARN_<account_id>` (optional)
 
   Important note: Fallback to standard AWS credentials will only occur if NO suffixed variables are found at all. If any suffixed credentials are present (even partially), the helper will require ALL mandatory suffixed credentials to be available.
 
 Hyphens within DNS labels are transformed to underscores (`s/-/_/g`) for credential lookup.
+
+### Debug Mode
+
+Set the environment variable `DOCKER_CREDENTIAL_ENV_DEBUG=true` to enable diagnostic output. When enabled, the helper will print information about credential sources to stderr, which can help troubleshoot authentication issues, especially with AWS ECR repositories.
 
 ## Configuration
 
@@ -84,11 +89,12 @@ stages {
     stage('Push Image to AWS-ECR (Standard Credentials)') {
         environment {
             // any standard AWS authentication mechanisms are supported
-            AWS_ROLE_ARN          = 'arn:aws:iam::123456789:role/jenkins-user' // triggers automatic sts:AssumeRole
-            // AWS_CONFIG_FILE    = file('AWS_CONFIG')
-            // AWS_PROFILE        = 'jenkins'
-            AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID') // String credential
-            AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY') // String credential
+            AWS_ROLE_ARN                = 'arn:aws:iam::123456789:role/jenkins-user' // triggers automatic sts:AssumeRole
+            // AWS_CONFIG_FILE          = file('AWS_CONFIG')
+            // AWS_PROFILE              = 'jenkins'
+            AWS_ACCESS_KEY_ID           = credentials('AWS_ACCESS_KEY_ID') // String credential
+            AWS_SECRET_ACCESS_KEY       = credentials('AWS_SECRET_ACCESS_KEY') // String credential
+            DOCKER_CREDENTIAL_ENV_DEBUG = 'true' // Enable debug output for credential helper
         }
         steps {
             sh 'docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/example/example-image:1.0'
@@ -102,6 +108,7 @@ stages {
             AWS_ACCESS_KEY_ID_987654321098     = credentials('AWS_ACCESS_KEY_ID') // String credential
             AWS_SECRET_ACCESS_KEY_987654321098 = credentials('AWS_SECRET_ACCESS_KEY') // String credential
             // AWS_SESSION_TOKEN_987654321098  = credentials('AWS_SESSION_TOKEN') // Optional
+            DOCKER_CREDENTIAL_ENV_DEBUG        = 'true' // Enable debug output for credential helper
         }
         steps {
             sh '''

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -31,6 +32,7 @@ const (
 	envPasswordSuffix = "PSW"
 	envSeparator      = "_"
 	envIgnoreLogin    = "IGNORE_DOCKER_LOGIN"
+	envDebugMode      = "DOCKER_CREDENTIAL_ENV_DEBUG"
 )
 
 // NotSupportedError represents an error indicating that the operation is not supported.
@@ -200,7 +202,7 @@ func getRegion(account string) string {
 	if region, found := os.LookupEnv("AWS_REGION_" + account); found {
 		return region
 	}
-	return os.Getenv("AWS_REGION")
+	return cmp.Or(os.Getenv("AWS_REGION"), os.Getenv("AWS_DEFAULT_REGION"))
 }
 
 // getRoleArn retrieves the AWS role ARN for a specific account by checking environment variables or provided configurations.
