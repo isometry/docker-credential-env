@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 )
 
@@ -94,9 +93,9 @@ func TestAccountEnv_Retrieve(t *testing.T) {
 				return
 			}
 			if tc.expectedErr == nil {
-				accessKeyVar := fmt.Sprintf("AWS_ACCESS_KEY_ID_%s", tc.accountID)
-				secretKeyVar := fmt.Sprintf("AWS_SECRET_ACCESS_KEY_%s", tc.accountID)
-				sessionTokenVar := fmt.Sprintf("AWS_SESSION_TOKEN_%s", tc.accountID)
+				accessKeyVar := "AWS_ACCESS_KEY_ID_" + tc.accountID
+				secretKeyVar := "AWS_SECRET_ACCESS_KEY_" + tc.accountID
+				sessionTokenVar := "AWS_SESSION_TOKEN_" + tc.accountID
 
 				// If we're testing standard AWS credentials fallback
 				if _, hasAccessKey := tc.envVars[accessKeyVar]; !hasAccessKey {

@@ -29,7 +29,10 @@ If no environment variables for the target repository's FQDN is found, then:
   * `AWS_SESSION_TOKEN_<account_id>` (optional)
   * `AWS_ROLE_ARN_<account_id>` (optional)
 
-  Important note: Fallback to standard AWS credentials will only occur if NO suffixed variables are found at all. If any suffixed credentials are present (even partially), the helper will require ALL mandatory suffixed credentials to be available.
+Important note: The helper will first look for account-suffixed AWS credentials (e.g. AWS_ACCESS_KEY_ID_123456789012).
+If ANY account-suffixed credentials are found, even partially, the helper requires ALL mandatory credentials to be
+present with that account suffix. Only if NO account-suffixed credentials exist will the helper fall back to using
+standard AWS credentials (AWS_ACCESS_KEY_ID etc).
 
 Hyphens within DNS labels are transformed to underscores (`s/-/_/g`) for credential lookup.
 
