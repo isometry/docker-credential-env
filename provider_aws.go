@@ -2,7 +2,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -21,8 +20,8 @@ import (
 // - AWS_SECRET_ACCESS_KEY_123456789012
 // - AWS_SESSION_TOKEN_123456789012 (optional).
 type accountEnv struct {
-	Hostname  string
 	AccountID string
+	Region    string
 }
 
 // Retrieve fetches AWS credentials either from account-specific environment variables
@@ -37,7 +36,7 @@ func (p *accountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 		// Diagnostic output
 		if out.Source != "" {
 			if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
-				_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to %q with %q\n", cmp.Or(p.Hostname, "n/a"), out.Source)
+				_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to '%s.dkr.ecr.%s.amazonaws.com/' with %q\n", p.AccountID, p.Region, out.Source)
 			}
 		}
 	}()

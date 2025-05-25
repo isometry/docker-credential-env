@@ -7,7 +7,7 @@ All OCI registry clients that support `~/.docker/config.json` are supported, inc
 
 In addition to handling basic username:password credentials, the credential helper also includes special support for:
 
-* Amazon Elastic Container Registry (ECR) repositories using [standard AWS credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html), including automatic cross-account role assumption. This also includes an opt-in mechanism for using AWS credentials suffixed by account ID.
+* Amazon Elastic Container Registry (ECR) repositories using [standard AWS credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html), including automatic cross-account role assumption.
 * [GitHub Packages](https://ghcr.io/) via the common `GITHUB_TOKEN` environment variable.
 
 ## Environment Variables

@@ -272,9 +272,10 @@ func TestEnvNotSupportedMethods(t *testing.T) {
 
 func TestGetRoleArn(t *testing.T) {
 	tests := []struct {
-		name     string
-		inputEnv map[string]string
-		expected string
+		name      string
+		inputEnv  map[string]string
+		expected  string
+		expectErr bool
 	}{
 		{
 			name: "Standard environment variables",
@@ -298,6 +299,15 @@ func TestGetRoleArn(t *testing.T) {
 			},
 			expected: "arn:aws:iam::123456789012:role/my-role",
 		},
+		{
+			name: "Suffixed variables set but role ARN set for standard environment",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN":                       "arn:aws:iam::123456789012:role/my-role",
+				"AWS_ACCESS_KEY_ID_123456789012":     "AKIA...",
+				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
+			},
+			expectErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -305,7 +315,10 @@ func TestGetRoleArn(t *testing.T) {
 			for k, v := range tt.inputEnv {
 				t.Setenv(k, v)
 			}
-			actual := getRoleArn("123456789012")
+			actual, err := getRoleArn("123456789012")
+			if (err != nil) != tt.expectErr {
+				t.Errorf("GetRoleArn(<account_id>) error = (%v), expected error = (%v)", err, tt.expectErr)
+			}
 			if actual != tt.expected {
 				t.Errorf("GetRoleArn(<account_id>) actual = (%v), expected (%v)", actual, tt.expected)
 			}

@@ -39,8 +39,8 @@ const (
 
 const (
 	envAwsAccessKeyID     = "AWS_ACCESS_KEY_ID"
-	envAwsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
-	envAwsSessionToken    = "AWS_SESSION_TOKEN"
+	envAwsSecretAccessKey = "AWS_SECRET_ACCESS_KEY" // #nosec G101
+	envAwsSessionToken    = "AWS_SESSION_TOKEN"     // #nosec G101
 	envAwsRoleArn         = "AWS_ROLE_ARN"
 )
 
@@ -99,7 +99,7 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 	if submatches != nil {
 		account := submatches[ecrHostname.SubexpIndex("account")]
 		region := submatches[ecrHostname.SubexpIndex("region")]
-		username, password, err = getEcrToken(hostname, account, region)
+		username, password, err = getEcrToken(account, region)
 		return
 	}
 
@@ -176,11 +176,8 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 //	username: The decoded username (typically "AWS")
 //	password: The decoded password token
 //	err: Any error encountered during the process
-func getEcrToken(hostname, account, region string) (username, password string, err error) {
-	envProvider := &accountEnv{
-		Hostname:  hostname,
-		AccountID: account,
-	}
+func getEcrToken(account, region string) (username, password string, err error) {
+	envProvider := &accountEnv{AccountID: account, Region: region}
 
 	// Set up the AWS SDK config with a custom retryer
 	simpleRetryer := func() aws.Retryer {
@@ -201,7 +198,10 @@ func getEcrToken(hostname, account, region string) (username, password string, e
 		return
 	}
 
-	if roleArn := getRoleArn(account, cfg.ConfigSources...); roleArn != "" {
+	var roleArn string
+	if roleArn, err = getRoleArn(account, cfg.ConfigSources...); err != nil {
+		return
+	} else if roleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
 		creds := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
 		cfg.Credentials = aws.NewCredentialsCache(creds)
@@ -217,12 +217,12 @@ func getEcrToken(hostname, account, region string) (username, password string, e
 		if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
 			if authData.ExpiresAt != nil {
 				expiration := authData.ExpiresAt.UTC().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stderr, "ECR token for %q will expire at %s (UTC)\n", hostname, expiration)
+				_, _ = fmt.Fprintf(os.Stderr, "ECR token for %q will expire at %s (UTC)\n", account, expiration)
 			}
 		}
 
 		if authData.AuthorizationToken == nil {
-			err = fmt.Errorf("ecr: authorization token for %q is nil", hostname)
+			err = fmt.Errorf("ecr: authorization token for %q is nil", account)
 			return
 		}
 
@@ -233,7 +233,7 @@ func getEcrToken(hostname, account, region string) (username, password string, e
 		}
 		token := bytes.SplitN(tokenBytes, []byte{':'}, 2)
 		if len(token) != 2 {
-			err = fmt.Errorf("ecr: invalid authorization token format for %q", hostname)
+			err = fmt.Errorf("ecr: invalid authorization token format for %q", account)
 			return
 		}
 
@@ -247,25 +247,32 @@ func getEcrToken(hostname, account, region string) (username, password string, e
 // then checks the standard AWS role ARN environment variable (AWS_ROLE_ARN) when no config sources are provided.
 // Finally, checks config sources which may contain role ARNs in AWS environment config or shared config.
 // Returns role ARN string if found, empty string otherwise.
-func getRoleArn(account string, configSources ...any) (roleARN string) {
+func getRoleArn(account string, configSources ...any) (roleARN string, err error) {
 	val, found := os.LookupEnv(envAwsRoleArn + "_" + account)
 	if found {
-		return strings.TrimSpace(val)
+		return strings.TrimSpace(val), nil
+	}
+
+	// Check if any account-specific AWS credentials exist
+	_, hasAccessKey := os.LookupEnv(envAwsAccessKeyID + "_" + account)
+	_, hasSecretKey := os.LookupEnv(envAwsSecretAccessKey + "_" + account)
+	if hasAccessKey || hasSecretKey {
+		return "", fmt.Errorf("account-specific environment variables for %q are set, but no role ARN found", account)
 	}
 
 	if len(configSources) == 0 {
-		return os.Getenv(envAwsRoleArn)
+		return os.Getenv(envAwsRoleArn), nil
 	}
 
 	for _, x := range configSources {
 		switch impl := x.(type) {
 		case config.EnvConfig:
 			if impl.RoleARN != "" {
-				return strings.TrimSpace(impl.RoleARN)
+				return strings.TrimSpace(impl.RoleARN), nil
 			}
 		case config.SharedConfig:
 			if impl.RoleARN != "" {
-				return strings.TrimSpace(impl.RoleARN)
+				return strings.TrimSpace(impl.RoleARN), nil
 			}
 		}
 	}
