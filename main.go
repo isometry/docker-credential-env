@@ -1,12 +1,18 @@
-// docker-credentials-env is a Docker credentials helper that reads
-// credentials from the process environment.
+// docker-credential-env is a Docker credentials helper that reads credentials from
+// the process environment.
+//
+// It supports both general environment variables (DOCKER_*_USR/PSW) and specialised
+// credentials for AWS ECR and GitHub Container Registry.
+//
+// For more details, see the project README.md.
 
+// Package main is the entry point for `docker-credential-env`.
 package main
 
 import (
-	docker_credentials "github.com/docker/docker-credential-helpers/credentials"
+	credhelpers "github.com/docker/docker-credential-helpers/credentials"
 )
 
 func main() {
-	docker_credentials.Serve(&Env{})
+	credhelpers.Serve(&Env{})
 }

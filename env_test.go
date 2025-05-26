@@ -207,7 +207,7 @@ func TestEnvGet(t *testing.T) {
 		{
 			name:     "GitHub Container Registry",
 			input:    "https://ghcr.io",
-			expected: output{username: "", password: "t1", err: nil},
+			expected: output{username: "x-access-token", password: "t1", err: nil},
 		},
 	}
 
@@ -222,7 +222,7 @@ func TestEnvGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actualUsername, actualPassword, actualErr := e.Get(tt.input)
-			if actualUsername != tt.expected.username || actualPassword != tt.expected.password || actualErr != tt.expected.err {
+			if actualUsername != tt.expected.username || actualPassword != tt.expected.password || !errors.Is(actualErr, tt.expected.err) {
 				t.Errorf("Get(%v) actual = (%v, %v, %v), expected (%v, %v, %v)", tt.input, actualUsername, actualPassword, actualErr, tt.expected.username, tt.expected.password, tt.expected.err)
 			}
 		})
@@ -268,4 +268,56 @@ func TestEnvNotSupportedMethods(t *testing.T) {
 			t.Errorf("List() actual = (%v), expected (%v)", actualErr, &NotSupportedError{})
 		}
 	})
+}
+
+func TestGetRoleArn(t *testing.T) {
+	tests := []struct {
+		name     string
+		inputEnv map[string]string
+		expected string
+	}{
+		{
+			name: "Standard environment variables",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/my-role",
+			},
+			expected: "arn:aws:iam::123456789012:role/my-role",
+		},
+		{
+			name: "Suffixed environment variables",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN_123456789012": "arn:aws:iam::123456789012:role/my-role",
+			},
+			expected: "arn:aws:iam::123456789012:role/my-role",
+		},
+		{
+			name: "Suffixed has higher priority",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN":              "arn:aws:iam::123456789012:role/other-role",
+				"AWS_ROLE_ARN_123456789012": "arn:aws:iam::123456789012:role/my-role",
+			},
+			expected: "arn:aws:iam::123456789012:role/my-role",
+		},
+		{
+			name: "Suffixed variables set but role ARN set for standard environment",
+			inputEnv: map[string]string{
+				"AWS_ROLE_ARN":                       "arn:aws:iam::123456789012:role/my-role",
+				"AWS_ACCESS_KEY_ID_123456789012":     "AKIA...",
+				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.inputEnv {
+				t.Setenv(k, v)
+			}
+			actual := getRoleArn("123456789012")
+			if actual != tt.expected {
+				t.Errorf("GetRoleArn(<account_id>) actual = (%v), expected (%v)", actual, tt.expected)
+			}
+		})
+	}
 }
