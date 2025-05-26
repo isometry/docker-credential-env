@@ -42,6 +42,7 @@ const (
 	envAwsSecretAccessKey = "AWS_SECRET_ACCESS_KEY" // #nosec G101
 	envAwsSessionToken    = "AWS_SESSION_TOKEN"     // #nosec G101
 	envAwsRoleArn         = "AWS_ROLE_ARN"
+	envAwsProfile         = "AWS_PROFILE"
 )
 
 // NotSupportedError represents an error indicating that the operation is not supported.
@@ -191,16 +192,33 @@ func getEcrToken(provider *ecrContext) (username, password string, err error) {
 		return retry.AddWithMaxBackoffDelay(standardRetryer, time.Second)
 	}
 
+	var extraOpts []func(*config.LoadOptions) error
+	if profile := getProfile(provider.AccountID); profile != "" {
+		// If a profile is specified, use it to load the AWS configuration
+		if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
+			_, _ = fmt.Fprintf(os.Stderr, "AWS profile %q (Account: %s)\n", profile, provider.AccountID)
+		}
+		extraOpts = append(extraOpts, config.WithSharedConfigProfile(profile))
+	} else {
+		// If no profile is specified, use the ecrContext provider to load credentials
+		extraOpts = append(extraOpts, config.WithCredentialsProvider(aws.NewCredentialsCache(provider)))
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRetryer(simpleRetryer),
-		config.WithRegion(provider.Region),
-		config.WithCredentialsProvider(aws.NewCredentialsCache(provider)))
+		append(extraOpts, config.WithRetryer(simpleRetryer),
+			config.WithRegion(provider.Region))...)
 	if err != nil {
 		return
 	}
 
+	// Add a shared config profile if available
+	//if profile := getProfile(provider.AccountID, cfg.ConfigSources...); profile != "" {
+	//	cfg.ConfigSources = append(cfg.ConfigSources, config.WithSharedConfigProfile(profile))
+	//}
+
+	// If a role ARN is specified for the account, assume that role
 	var roleArn string
 	if roleArn = getRoleArn(provider.AccountID, cfg.ConfigSources...); roleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
@@ -239,6 +257,45 @@ func getEcrToken(provider *ecrContext) (username, password string, err error) {
 		}
 
 		username, password = string(token[0]), string(token[1])
+	}
+	return
+}
+
+// getProfile resolves an AWS profile name by checking, in order:
+// 1. Account-specific environment variable (AWS_PROFILE_<account>)
+// 2. Configuration sources (SharedConfigProfile or Profile)
+// 3. Default AWS_PROFILE environment variable
+//
+// Parameters:
+//
+//	account - AWS account ID to look up account-specific profile name
+//	configSources - Optional AWS configuration sources containing profile information
+//
+// Returns:
+//
+//	profile - Resolved AWS profile name, empty string if none found
+func getProfile(account string, configSources ...any) (profile string) {
+	// Check for account-specific profile environment variable
+	val, found := os.LookupEnv(envAwsProfile + "_" + account)
+	if found {
+		return strings.TrimSpace(val)
+	}
+
+	if len(configSources) == 0 {
+		return os.Getenv("AWS_PROFILE")
+	}
+
+	for _, x := range configSources {
+		switch impl := x.(type) {
+		case config.EnvConfig:
+			if impl.SharedConfigProfile != "" {
+				return strings.TrimSpace(impl.SharedConfigProfile)
+			}
+		case config.SharedConfig:
+			if impl.Profile != "" {
+				return strings.TrimSpace(impl.Profile)
+			}
+		}
 	}
 	return
 }

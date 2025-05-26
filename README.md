@@ -1,4 +1,3 @@
-
 # Docker Credentials from the Environment
 
 A [Docker credential helper](https://docs.docker.com/engine/reference/commandline/login/#credential-helpers) to streamline repository interactions in scenarios where the cacheing of credentials to `~/.docker/config.json` is undesirable, including CI/CD pipelines, or anywhere ephemeral credentials are used.
@@ -28,6 +27,19 @@ If no environment variables for the target repository's FQDN is found, then:
   * `AWS_SECRET_ACCESS_KEY_<account_id>`
   * `AWS_SESSION_TOKEN_<account_id>` (optional)
   * `AWS_ROLE_ARN_<account_id>` (optional)
+  * `AWS_PROFILE_<account_id>` (optional)
+
+### AWS Profile Selection
+
+The helper supports using AWS named profiles for authentication:
+
+* `AWS_PROFILE`: Specifies which profile to use from your AWS shared configuration files. This is used when no account-specific credentials or profile is found.
+* `AWS_PROFILE_<account_id>`: Account-specific profile selection. When accessing an ECR repository for a specific AWS account, you can set this environment variable to use a specific named profile from your AWS shared configuration files.
+
+The profile selection follows this order of precedence:
+1. Account-specific profile (`AWS_PROFILE_<account_id>`)
+2. Standard AWS credentials for the specific account (if any account-specific credentials are found)
+3. Standard AWS profile (`AWS_PROFILE`) if no account-specific settings are found
 
 Important note: The helper will first look for account-suffixed AWS credentials (e.g. AWS_ACCESS_KEY_ID_123456789012).
 If ANY account-suffixed credentials are found, even partially, the helper requires ALL mandatory credentials to be
@@ -120,7 +132,26 @@ stages {
         }
     }
 
-    stage('Push Image to GHCR') {
+    stage('Push Image to AWS-ECR (Using Named Profiles)') {
+      environment {
+        // Using standard profile for one account
+        AWS_PROFILE                    = 'default-profile'
+        // Using account-specific profile for another account
+        AWS_PROFILE_987654321098       = 'account-specific-profile'
+        DOCKER_CREDENTIAL_ENV_DEBUG    = 'true' // Enable debug output for credential helper
+      }
+      steps {
+        sh '''
+            # Uses AWS_PROFILE_987654321098
+            docker push 987654321098.dkr.ecr.eu-west-1.amazonaws.com/another-example/another-image:2.0
+            
+            # Uses AWS_PROFILE for a different account
+            docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/example/example-image:1.0
+          '''
+      }
+    }
+
+  stage('Push Image to GHCR') {
         environment {
             GITHUB_TOKEN = credentials('github') // String credential
         }

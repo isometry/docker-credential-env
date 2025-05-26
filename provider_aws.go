@@ -36,7 +36,7 @@ func (p *ecrContext) Retrieve(_ context.Context) (out aws.Credentials, err error
 		// Diagnostic output
 		if out.Source != "" {
 			if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
-				_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to '%s.dkr.ecr.%s.amazonaws.com/' with %q\n", p.AccountID, p.Region, out.Source)
+				_, _ = fmt.Fprintf(os.Stderr, "Authenticating access to '%s.dkr.ecr.%s.amazonaws.com' with %q\n", p.AccountID, p.Region, out.Source)
 			}
 		}
 	}()

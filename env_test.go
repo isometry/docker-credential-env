@@ -321,3 +321,46 @@ func TestGetRoleArn(t *testing.T) {
 		})
 	}
 }
+
+func TestGetProfile(t *testing.T) {
+	tests := []struct {
+		name     string
+		inputEnv map[string]string
+		expected string
+	}{
+		{
+			name: "Standard environment variable",
+			inputEnv: map[string]string{
+				"AWS_PROFILE": "my-profile",
+			},
+			expected: "my-profile",
+		},
+		{
+			name: "Suffixed environment variable",
+			inputEnv: map[string]string{
+				"AWS_PROFILE_12345": "my-profile",
+			},
+			expected: "my-profile",
+		},
+		{
+			name: "Suffixed has higher priority",
+			inputEnv: map[string]string{
+				"AWS_PROFILE":       "other-profile",
+				"AWS_PROFILE_12345": "my-profile",
+			},
+			expected: "my-profile",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.inputEnv {
+				t.Setenv(k, v)
+			}
+			actual := getProfile("12345")
+			if actual != tt.expected {
+				t.Errorf("GetProfile(<suffix>) actual = (%v), expected (%v)", actual, tt.expected)
+			}
+		})
+	}
+}
