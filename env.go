@@ -167,7 +167,6 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 //
 // Parameters:
 //
-//	hostname: The ECR repository hostname
 //	account: The AWS account ID
 //	region: The AWS region for the ECR repository
 //
@@ -199,9 +198,7 @@ func getEcrToken(account, region string) (username, password string, err error) 
 	}
 
 	var roleArn string
-	if roleArn, err = getRoleArn(account, cfg.ConfigSources...); err != nil {
-		return
-	} else if roleArn != "" {
+	if roleArn = getRoleArn(account, cfg.ConfigSources...); roleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
 		creds := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
 		cfg.Credentials = aws.NewCredentialsCache(creds)
@@ -247,32 +244,31 @@ func getEcrToken(account, region string) (username, password string, err error) 
 // then checks the standard AWS role ARN environment variable (AWS_ROLE_ARN) when no config sources are provided.
 // Finally, checks config sources which may contain role ARNs in AWS environment config or shared config.
 // Returns role ARN string if found, empty string otherwise.
-func getRoleArn(account string, configSources ...any) (roleARN string, err error) {
+func getRoleArn(account string, configSources ...any) (roleARN string) {
 	val, found := os.LookupEnv(envAwsRoleArn + "_" + account)
 	if found {
-		return strings.TrimSpace(val), nil
+		return strings.TrimSpace(val)
 	}
 
 	// Check if any account-specific AWS credentials exist
-	_, hasAccessKey := os.LookupEnv(envAwsAccessKeyID + "_" + account)
-	_, hasSecretKey := os.LookupEnv(envAwsSecretAccessKey + "_" + account)
-	if hasAccessKey || hasSecretKey {
-		return "", fmt.Errorf("account-specific environment variables for %q are set, but no role ARN found", account)
+	_, hasSuffixedEnv := os.LookupEnv(envAwsAccessKeyID + "_" + account)
+	if hasSuffixedEnv {
+		return ""
 	}
 
 	if len(configSources) == 0 {
-		return os.Getenv(envAwsRoleArn), nil
+		return os.Getenv(envAwsRoleArn)
 	}
 
 	for _, x := range configSources {
 		switch impl := x.(type) {
 		case config.EnvConfig:
 			if impl.RoleARN != "" {
-				return strings.TrimSpace(impl.RoleARN), nil
+				return strings.TrimSpace(impl.RoleARN)
 			}
 		case config.SharedConfig:
 			if impl.RoleARN != "" {
-				return strings.TrimSpace(impl.RoleARN), nil
+				return strings.TrimSpace(impl.RoleARN)
 			}
 		}
 	}
