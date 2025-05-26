@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestAccountEnv_Retrieve(t *testing.T) {
+func TestECRContext_Retrieve(t *testing.T) {
 	useCases := []struct {
 		name        string
 		accountID   string
@@ -32,7 +32,7 @@ func TestAccountEnv_Retrieve(t *testing.T) {
 		{
 			name:        "Missing access key with session token present",
 			accountID:   "123456789012",
-			expectedErr: errors.New("accountEnv: environment variable AWS_ACCESS_KEY_ID_123456789012 not found"),
+			expectedErr: errors.New("ecrContext: environment variable AWS_ACCESS_KEY_ID_123456789012 not found"),
 			envVars: map[string]string{
 				"AWS_SESSION_TOKEN_123456789012":     "AQoEXAMPLEH4...",
 				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
@@ -41,7 +41,7 @@ func TestAccountEnv_Retrieve(t *testing.T) {
 		{
 			name:        "Missing secret key with access key present",
 			accountID:   "123456789012",
-			expectedErr: errors.New("accountEnv: environment variable AWS_SECRET_ACCESS_KEY_123456789012 not found"),
+			expectedErr: errors.New("ecrContext: environment variable AWS_SECRET_ACCESS_KEY_123456789012 not found"),
 			envVars: map[string]string{
 				"AWS_ACCESS_KEY_ID_123456789012": "AKIA...",
 			},
@@ -49,7 +49,7 @@ func TestAccountEnv_Retrieve(t *testing.T) {
 		{
 			name:        "Missing both keys - fallback to standard AWS credentials",
 			accountID:   "123456789012",
-			expectedErr: errors.New("accountEnv: no account credentials found and standard AWS_ACCESS_KEY_ID not found"),
+			expectedErr: errors.New("ecrContext: no account credentials found and standard AWS_ACCESS_KEY_ID not found"),
 		},
 		{
 			name:      "Valid credentials in FedRAMP",
@@ -75,7 +75,7 @@ func TestAccountEnv_Retrieve(t *testing.T) {
 				t.Setenv(k, v)
 			}
 
-			provider := &accountEnv{
+			provider := &ecrContext{
 				AccountID: tc.accountID,
 			}
 

@@ -97,9 +97,11 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 
 	submatches := ecrHostname.FindStringSubmatch(hostname)
 	if submatches != nil {
-		account := submatches[ecrHostname.SubexpIndex("account")]
-		region := submatches[ecrHostname.SubexpIndex("region")]
-		username, password, err = getEcrToken(account, region)
+		envProvider := &ecrContext{
+			AccountID: submatches[ecrHostname.SubexpIndex("account")],
+			Region:    submatches[ecrHostname.SubexpIndex("region")],
+		}
+		username, password, err = getEcrToken(envProvider)
 		return
 	}
 
@@ -175,8 +177,10 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 //	username: The decoded username (typically "AWS")
 //	password: The decoded password token
 //	err: Any error encountered during the process
-func getEcrToken(account, region string) (username, password string, err error) {
-	envProvider := &accountEnv{AccountID: account, Region: region}
+func getEcrToken(provider *ecrContext) (username, password string, err error) {
+	if provider == nil {
+		return "", "", fmt.Errorf("ecr: provider must not be nil")
+	}
 
 	// Set up the AWS SDK config with a custom retryer
 	simpleRetryer := func() aws.Retryer {
@@ -191,14 +195,14 @@ func getEcrToken(account, region string) (username, password string, err error) 
 	defer cancel()
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRetryer(simpleRetryer),
-		config.WithRegion(region),
-		config.WithCredentialsProvider(aws.NewCredentialsCache(envProvider)))
+		config.WithRegion(provider.Region),
+		config.WithCredentialsProvider(aws.NewCredentialsCache(provider)))
 	if err != nil {
 		return
 	}
 
 	var roleArn string
-	if roleArn = getRoleArn(account, cfg.ConfigSources...); roleArn != "" {
+	if roleArn = getRoleArn(provider.AccountID, cfg.ConfigSources...); roleArn != "" {
 		stsSvc := sts.NewFromConfig(cfg)
 		creds := stscreds.NewAssumeRoleProvider(stsSvc, roleArn)
 		cfg.Credentials = aws.NewCredentialsCache(creds)
@@ -214,12 +218,12 @@ func getEcrToken(account, region string) (username, password string, err error) 
 		if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
 			if authData.ExpiresAt != nil {
 				expiration := authData.ExpiresAt.UTC().Format(time.RFC3339)
-				_, _ = fmt.Fprintf(os.Stderr, "ECR token for %q will expire at %s (UTC)\n", account, expiration)
+				_, _ = fmt.Fprintf(os.Stderr, "ECR token for %q will expire at %s (UTC)\n", provider.AccountID, expiration)
 			}
 		}
 
 		if authData.AuthorizationToken == nil {
-			err = fmt.Errorf("ecr: authorization token for %q is nil", account)
+			err = fmt.Errorf("ecr: authorization token for %q is nil", provider.AccountID)
 			return
 		}
 
@@ -230,7 +234,7 @@ func getEcrToken(account, region string) (username, password string, err error) 
 		}
 		token := bytes.SplitN(tokenBytes, []byte{':'}, 2)
 		if len(token) != 2 {
-			err = fmt.Errorf("ecr: invalid authorization token format for %q", account)
+			err = fmt.Errorf("ecr: invalid authorization token format for %q", provider.AccountID)
 			return
 		}
 

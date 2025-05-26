@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
-// accountEnv retrieves AWS credentials from environment variables
+// ecrContext retrieves AWS credentials from environment variables
 // that are suffixed with a specific AWS account ID.
 //
 // For example, if AccountID is "123456789012",,
@@ -19,7 +19,7 @@ import (
 // - AWS_ACCESS_KEY_ID_123456789012
 // - AWS_SECRET_ACCESS_KEY_123456789012
 // - AWS_SESSION_TOKEN_123456789012 (optional).
-type accountEnv struct {
+type ecrContext struct {
 	AccountID string
 	Region    string
 }
@@ -27,9 +27,9 @@ type accountEnv struct {
 // Retrieve fetches AWS credentials either from account-specific environment variables
 // or falls back to standard AWS environment variables if account-specific ones are not found.
 // This method implements the aws.CredentialsProvider interface.
-func (p *accountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error) {
+func (p *ecrContext) Retrieve(_ context.Context) (out aws.Credentials, err error) {
 	if p.AccountID == "" {
-		return aws.Credentials{}, errors.New("accountEnv: AccountID must be set")
+		return aws.Credentials{}, errors.New("ecrContext: AccountID must be set")
 	}
 
 	defer func() {
@@ -53,10 +53,10 @@ func (p *accountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 	if accessKeyID != "" || secretAccessKey != "" || sessionToken != "" {
 		// If using suffixed credentials, both the access-key and secret key must be present
 		if accessKeyID == "" {
-			return aws.Credentials{}, fmt.Errorf("accountEnv: environment variable %s not found", envAwsAccessKeyID+suffix)
+			return aws.Credentials{}, fmt.Errorf("ecrContext: environment variable %s not found", envAwsAccessKeyID+suffix)
 		}
 		if secretAccessKey == "" {
-			return aws.Credentials{}, fmt.Errorf("accountEnv: environment variable %s not found", envAwsSecretAccessKey+suffix)
+			return aws.Credentials{}, fmt.Errorf("ecrContext: environment variable %s not found", envAwsSecretAccessKey+suffix)
 		}
 
 		// Use only the suffixed credentials
@@ -76,10 +76,10 @@ func (p *accountEnv) Retrieve(_ context.Context) (out aws.Credentials, err error
 
 	// Check if standard credentials are available
 	if accessKeyID == "" {
-		return aws.Credentials{}, errors.New("accountEnv: no account credentials found and standard AWS_ACCESS_KEY_ID not found")
+		return aws.Credentials{}, errors.New("ecrContext: no account credentials found and standard AWS_ACCESS_KEY_ID not found")
 	}
 	if secretAccessKey == "" {
-		return aws.Credentials{}, errors.New("accountEnv: no account credentials found and standard AWS_SECRET_ACCESS_KEY not found")
+		return aws.Credentials{}, errors.New("ecrContext: no account credentials found and standard AWS_SECRET_ACCESS_KEY not found")
 	}
 
 	out = aws.Credentials{
