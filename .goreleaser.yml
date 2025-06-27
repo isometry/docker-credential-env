@@ -9,7 +9,10 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}"
+      - "-s -w"
+      - "-X github.com/docker/docker-credential-helpers/credentials.Name={{.ProjectName}}"
+      - "-X github.com/docker/docker-credential-helpers/credentials.Version={{.Version}}"
+      - "-X github.com/docker/docker-credential-helpers/credentials.Revision={{.Commit}}"
     goos:
       - freebsd
       - windows
@@ -17,8 +20,6 @@ builds:
       - darwin
     goarch:
       - amd64
-      - "386"
-      - arm
       - arm64
     binary: docker-credential-env
 archives:
