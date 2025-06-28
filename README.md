@@ -54,28 +54,46 @@ Set the environment variable `DOCKER_CREDENTIAL_ENV_DEBUG=true` to enable diagno
 
 ## Configuration
 
-The `docker-credential-env` binary must be installed to `$PATH`, and is enabled via `~/.docker/config.json`:
+The `docker-credential-env` binary must be installed to `$PATH`, and is enabled via `~/.docker/config.json` (or `$DOCKER_CONFIG/config.json` if the `DOCKER_CONFIG` environment variable is set):
 
-* Handle all docker authentication:
+The `docker-credential-env` binary includes a `setup` sub-command to help configure Docker to use the credential helper.
 
+* Configure all Docker authentication to use the `env` credential helper:
+  ```bash
+  docker-credential-env setup default
+  ```
+  or
   ```json
   {
     "credsStore": "env"
   }
   ```
 
-* Handle docker authentication for specific repositories:
+* Configure a specific registry to use the `env` credential helper:
+  ```bash
+  docker-credential-env setup artifactory.example.com
+  docker-credential-env setup ghcr.io
+  docker-credential-env setup 123456789012.dkr.ecr.us-east-1.amazonaws.com
+  ```
 
   ```json
   {
     "credHelpers": {
       "artifactory.example.com": "env",
+      "ghcr.io": "env",
       "123456789012.dkr.ecr.us-east-1.amazonaws.com": "env"
     }
   }
   ```
 
-By default, attempts to explicitly `docker {login,logout}` will generate an error. To ignore these errors, set the environment variable `IGNORE_DOCKER_LOGIN=1`.
+By default, attempts to explicitly `docker {login,logout}` for registries configured to use the `env` credential helper will generate an error. To ignore these errors, set the environment variable `IGNORE_DOCKER_LOGIN=1`.
+
+* Show current configuration for the `env` credential helper:
+  ```bash
+  docker-credential-env setup show
+  ```
+
+The setup command respects the `DOCKER_CONFIG` environment variable for locating and updating the Docker client configuration file.
 
 ## Example Usage
 
@@ -144,7 +162,7 @@ stages {
         sh '''
             # Uses AWS_PROFILE_987654321098
             docker push 987654321098.dkr.ecr.eu-west-1.amazonaws.com/another-example/another-image:2.0
-            
+
             # Uses AWS_PROFILE for a different account
             docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/example/example-image:1.0
           '''

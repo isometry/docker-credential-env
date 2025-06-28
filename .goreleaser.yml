@@ -11,6 +11,7 @@ builds:
     ldflags:
       - "-s -w"
       - "-X github.com/docker/docker-credential-helpers/credentials.Name={{.ProjectName}}"
+      - "-X github.com/docker/docker-credential-helpers/credentials.Package={{.ModulePath}}"
       - "-X github.com/docker/docker-credential-helpers/credentials.Version={{.Version}}"
       - "-X github.com/docker/docker-credential-helpers/credentials.Revision={{.Commit}}"
     goos:

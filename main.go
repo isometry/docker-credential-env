@@ -10,9 +10,24 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	credhelpers "github.com/docker/docker-credential-helpers/credentials"
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "setup" {
+		// Extract arguments for setup command (skip program name and "setup")
+		setupArgs := os.Args[2:]
+
+		if err := RunSetupCommand(setupArgs, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "Setup failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// If not a setup command, serve as a credential helper
 	credhelpers.Serve(&Env{})
 }
