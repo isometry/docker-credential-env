@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -30,13 +31,13 @@ func TestECRContext_Retrieve(t *testing.T) {
 			},
 		},
 		{
-			name:        "Missing access key with session token present",
-			accountID:   "123456789012",
-			expectedErr: errors.New("ecrContext: environment variable AWS_ACCESS_KEY_ID_123456789012 not found"),
+			name:      "Missing access key with session token present",
+			accountID: "123456789012",
 			envVars: map[string]string{
 				"AWS_SESSION_TOKEN_123456789012":     "AQoEXAMPLEH4...",
 				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
 			},
+			expectedErr: errors.New("ecrContext: environment variable AWS_ACCESS_KEY_ID_123456789012 not found"),
 		},
 		{
 			name:        "Missing secret key with access key present",
@@ -47,25 +48,13 @@ func TestECRContext_Retrieve(t *testing.T) {
 			},
 		},
 		{
-			name:        "Missing both keys - fallback to standard AWS credentials",
-			accountID:   "123456789012",
-			expectedErr: errors.New("ecrContext: no account credentials found and standard AWS_ACCESS_KEY_ID not found"),
-		},
-		{
-			name:      "Valid credentials in FedRAMP",
-			accountID: "123456789012",
-			envVars: map[string]string{
-				"AWS_ACCESS_KEY_ID_123456789012":     "AKIA...",
-				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
-			},
-		},
-		{
-			name:      "Standard AWS credentials when no suffixed vars exist",
+			name:      "No suffixed credentials",
 			accountID: "123456789012",
 			envVars: map[string]string{
 				"AWS_ACCESS_KEY_ID":     "STD-AKIA...",
 				"AWS_SECRET_ACCESS_KEY": "STD-wJalr...",
 			},
+			expectedErr: fmt.Errorf("ecrContext: environment variable %s not found", envAwsAccessKeyID+"_123456789012"),
 		},
 	}
 	for _, tc := range useCases {
@@ -118,6 +107,92 @@ func TestECRContext_Retrieve(t *testing.T) {
 				if creds.SessionToken != "" && creds.SessionToken != tc.envVars[sessionTokenVar] {
 					t.Errorf("expected session token %v but got %v", tc.envVars[sessionTokenVar], creds.SessionToken)
 				}
+			}
+		})
+	}
+}
+
+func TestECRContext_HasAccountSuffixedCredentials(t *testing.T) {
+	useCases := []struct {
+		name      string
+		accountID string
+		envVars   map[string]string
+		expected  bool
+	}{
+		{
+			name:      "Has suffixed credentials for account",
+			accountID: "123456789012",
+			envVars: map[string]string{
+				"AWS_ACCESS_KEY_ID_123456789012":     "AKIA...",
+				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
+			},
+			expected: true,
+		},
+		{
+			name:      "No credentials",
+			accountID: "123456789012",
+			envVars:   map[string]string{},
+			expected:  false,
+		},
+		{
+			name:      "Has suffixed access key only",
+			accountID: "123456789012",
+			envVars: map[string]string{
+				"AWS_ACCESS_KEY_ID_123456789012": "AKIA...",
+			},
+			expected: false,
+		},
+		{
+			name:      "Has suffixed secret key only",
+			accountID: "123456789012",
+			envVars: map[string]string{
+				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
+			},
+			expected: false,
+		},
+		{
+			name:      "Has non-suffixed credentials for account",
+			accountID: "123456789012",
+			envVars: map[string]string{
+				"AWS_ACCESS_KEY_ID":     "AKIA...",
+				"AWS_SECRET_ACCESS_KEY": "wJalr...",
+			},
+			expected: false,
+		},
+		{
+			name:      "Has suffixed credentials for no account",
+			accountID: "",
+			envVars: map[string]string{
+				"AWS_ACCESS_KEY_ID_123456789012":     "AKIA...",
+				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
+			},
+			expected: false,
+		},
+		{
+			name:      "Has suffixed credentials for different account",
+			accountID: "987654321098",
+			envVars: map[string]string{
+				"AWS_ACCESS_KEY_ID_123456789012":     "AKIA...",
+				"AWS_SECRET_ACCESS_KEY_123456789012": "wJalr...",
+			},
+			expected: false,
+		},
+	}
+
+	for _, tc := range useCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set environment variables
+			for k, v := range tc.envVars {
+				t.Setenv(k, v)
+			}
+
+			provider := &ecrContext{
+				AccountID: tc.accountID,
+			}
+
+			result := provider.HasAccountSuffixedCredentials()
+			if result != tc.expected {
+				t.Errorf("expected %v but got %v", tc.expected, result)
 			}
 		})
 	}

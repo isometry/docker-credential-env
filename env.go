@@ -199,10 +199,11 @@ func getEcrToken(provider *ecrContext) (username, password string, err error) {
 			_, _ = fmt.Fprintf(os.Stderr, "AWS profile %q (Account: %s)\n", profile, provider.AccountID)
 		}
 		extraOpts = append(extraOpts, config.WithSharedConfigProfile(profile))
-	} else {
-		// If no profile is specified, use the ecrContext provider to load credentials
+	} else if provider.HasAccountSuffixedCredentials() {
+		// Only use custom provider if account-suffixed access-key credentials exist
 		extraOpts = append(extraOpts, config.WithCredentialsProvider(aws.NewCredentialsCache(provider)))
 	}
+	// If neither profile nor account-suffixed credentials, use default AWS credential chain
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()

@@ -24,8 +24,23 @@ type ecrContext struct {
 	Region    string
 }
 
-// Retrieve fetches AWS credentials either from account-specific environment variables
-// or falls back to standard AWS environment variables if account-specific ones are not found.
+// HasAccountSuffixedCredentials checks if account-specific environment variables exist.
+// Returns true if `_ACCOUNT_ID`-suffixed AWS credential environment variables are found.
+func (p *ecrContext) HasAccountSuffixedCredentials() bool {
+	if p.AccountID == "" {
+		return false
+	}
+
+	suffix := "_" + p.AccountID
+
+	// Check for any suffixed environment variables
+	_, hasAccessKey := os.LookupEnv(envAwsAccessKeyID + suffix)
+	_, hasSecretKey := os.LookupEnv(envAwsSecretAccessKey + suffix)
+
+	return hasAccessKey && hasSecretKey
+}
+
+// Retrieve fetches AWS credentials from account-specific environment variables.
 // This method implements the aws.CredentialsProvider interface.
 func (p *ecrContext) Retrieve(_ context.Context) (out aws.Credentials, err error) {
 	if p.AccountID == "" {
@@ -49,44 +64,20 @@ func (p *ecrContext) Retrieve(_ context.Context) (out aws.Credentials, err error
 	secretAccessKey := os.Getenv(envAwsSecretAccessKey + suffix)
 	sessionToken := os.Getenv(envAwsSessionToken + suffix)
 
-	// If ANY suffixed credentials exist, require ALL mandatory suffixed credentials
-	if accessKeyID != "" || secretAccessKey != "" || sessionToken != "" {
-		// If using suffixed credentials, both the access-key and secret key must be present
-		if accessKeyID == "" {
-			return aws.Credentials{}, fmt.Errorf("ecrContext: environment variable %s not found", envAwsAccessKeyID+suffix)
-		}
-		if secretAccessKey == "" {
-			return aws.Credentials{}, fmt.Errorf("ecrContext: environment variable %s not found", envAwsSecretAccessKey+suffix)
-		}
-
-		// Use only the suffixed credentials
-		out = aws.Credentials{
-			AccessKeyID:     accessKeyID,
-			SecretAccessKey: secretAccessKey,
-			SessionToken:    sessionToken, // Session token is optional, can be empty
-			Source:          fmt.Sprintf("Suffixed AWS Environment (Account: %s)", p.AccountID),
-		}
-		return out, nil
-	}
-
-	// No suffixed credentials found, fall back to standard AWS credentials
-	accessKeyID = os.Getenv(envAwsAccessKeyID)
-	secretAccessKey = os.Getenv(envAwsSecretAccessKey)
-	sessionToken = os.Getenv(envAwsSessionToken)
-
-	// Check if standard credentials are available
+	// If using suffixed credentials, both the access-key and secret key must be present
 	if accessKeyID == "" {
-		return aws.Credentials{}, errors.New("ecrContext: no account credentials found and standard AWS_ACCESS_KEY_ID not found")
+		return aws.Credentials{}, fmt.Errorf("ecrContext: environment variable %s not found", envAwsAccessKeyID+suffix)
 	}
 	if secretAccessKey == "" {
-		return aws.Credentials{}, errors.New("ecrContext: no account credentials found and standard AWS_SECRET_ACCESS_KEY not found")
+		return aws.Credentials{}, fmt.Errorf("ecrContext: environment variable %s not found", envAwsSecretAccessKey+suffix)
 	}
 
+	// Use only the suffixed credentials
 	out = aws.Credentials{
 		AccessKeyID:     accessKeyID,
 		SecretAccessKey: secretAccessKey,
-		SessionToken:    sessionToken,
-		Source:          fmt.Sprintf("Standard AWS Environment (Account: %s)", p.AccountID),
+		SessionToken:    sessionToken, // Session token is optional, can be empty
+		Source:          fmt.Sprintf("Suffixed AWS Environment (Account: %s)", p.AccountID),
 	}
 	return out, nil
 }
