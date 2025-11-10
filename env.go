@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -180,7 +181,7 @@ func getEnvCredentials(hostname string) (username, password string, found bool) 
 //	err: Any error encountered during the process
 func getEcrToken(provider *ecrContext) (username, password string, err error) {
 	if provider == nil {
-		return "", "", fmt.Errorf("ecr: provider must not be nil")
+		return "", "", errors.New("ecr: provider must not be nil")
 	}
 
 	// Set up the AWS SDK config with a custom retryer
@@ -193,31 +194,27 @@ func getEcrToken(provider *ecrContext) (username, password string, err error) {
 	}
 
 	var extraOpts []func(*config.LoadOptions) error
-	if profile := getProfile(provider.AccountID); profile != "" {
+	if provider.HasAccountSuffixedCredentials() { // 1. Account-suffixed credentials
+		// Only use custom provider if account-suffixed access-key credentials exist
+		extraOpts = append(extraOpts, config.WithCredentialsProvider(aws.NewCredentialsCache(provider)))
+	} else if profile := getProfile(provider.AccountID); profile != "" { // 2. Shared config profile
 		// If a profile is specified, use it to load the AWS configuration
 		if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
 			_, _ = fmt.Fprintf(os.Stderr, "AWS profile %q (Account: %s)\n", profile, provider.AccountID)
 		}
 		extraOpts = append(extraOpts, config.WithSharedConfigProfile(profile))
-	} else if provider.HasAccountSuffixedCredentials() {
-		// Only use custom provider if account-suffixed access-key credentials exist
-		extraOpts = append(extraOpts, config.WithCredentialsProvider(aws.NewCredentialsCache(provider)))
 	}
-	// If neither profile nor account-suffixed credentials, use default AWS credential chain
 
+	// If neither profile nor account-suffixed credentials, use default AWS credential chain
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	cfg, err := config.LoadDefaultConfig(ctx,
-		append(extraOpts, config.WithRetryer(simpleRetryer),
+		append(extraOpts,
+			config.WithRetryer(simpleRetryer),
 			config.WithRegion(provider.Region))...)
 	if err != nil {
-		return
+		return username, password, err
 	}
-
-	// Add a shared config profile if available
-	//if profile := getProfile(provider.AccountID, cfg.ConfigSources...); profile != "" {
-	//	cfg.ConfigSources = append(cfg.ConfigSources, config.WithSharedConfigProfile(profile))
-	//}
 
 	// If a role ARN is specified for the account, assume that role
 	var roleArn string
@@ -231,7 +228,7 @@ func getEcrToken(provider *ecrContext) (username, password string, err error) {
 
 	output, err := client.GetAuthorizationToken(ctx, nil)
 	if err != nil {
-		return
+		return username, password, err
 	}
 	for _, authData := range output.AuthorizationData {
 		if b, err := strconv.ParseBool(os.Getenv(envDebugMode)); err == nil && b {
@@ -243,23 +240,23 @@ func getEcrToken(provider *ecrContext) (username, password string, err error) {
 
 		if authData.AuthorizationToken == nil {
 			err = fmt.Errorf("ecr: authorization token for %q is nil", provider.AccountID)
-			return
+			return username, password, err
 		}
 
 		var tokenBytes []byte
 		tokenBytes, err = base64.StdEncoding.DecodeString(*authData.AuthorizationToken)
 		if err != nil {
-			return
+			return username, password, err
 		}
 		token := bytes.SplitN(tokenBytes, []byte{':'}, 2)
 		if len(token) != 2 {
 			err = fmt.Errorf("ecr: invalid authorization token format for %q", provider.AccountID)
-			return
+			return username, password, err
 		}
 
 		username, password = string(token[0]), string(token[1])
 	}
-	return
+	return username, password, err
 }
 
 // getProfile resolves an AWS profile name by checking, in order:
