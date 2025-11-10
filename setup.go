@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -111,7 +112,7 @@ func (c *setupCmd) configure(defaultSetup bool) error {
 	}
 
 	// Save configuration
-	if err := c.saveConfig(config); err != nil {
+	if err = c.saveConfig(config); err != nil {
 		return err
 	}
 
@@ -125,7 +126,7 @@ func (c *setupCmd) configure(defaultSetup bool) error {
 
 func (c *setupCmd) validateRegistry() error {
 	if c.Registry == "" {
-		return fmt.Errorf("registry cannot be empty")
+		return errors.New("registry cannot be empty")
 	}
 	if strings.ContainsAny(c.Registry, " /\\") {
 		return fmt.Errorf("invalid registry: %q", c.Registry)
@@ -161,7 +162,7 @@ func (c *setupCmd) saveConfig(config *configfile.ConfigFile) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal Docker config: %w", err)
 	}
-	if err := os.WriteFile(c.configPath, configData, 0600); err != nil {
+	if err = os.WriteFile(c.configPath, configData, 0600); err != nil {
 		return fmt.Errorf("failed to write Docker config file %q: %w", c.configPath, err)
 	}
 	return nil
@@ -170,7 +171,7 @@ func (c *setupCmd) saveConfig(config *configfile.ConfigFile) error {
 // RunSetupCommand is the main entry point for the setup command.
 func RunSetupCommand(args []string, out io.Writer) error {
 	if len(args) < 1 {
-		return fmt.Errorf("missing argument\nUsage: docker-credential-env setup <show|default|registry-url>")
+		return errors.New("missing argument\nUsage: docker-credential-env setup <show|default|registry-url>")
 	}
 
 	cmd := &setupCmd{
