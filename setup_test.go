@@ -72,7 +72,10 @@ func TestRunSetupCommand_Show(t *testing.T) {
 			"docker.io": "env",
 		},
 	}
-	configData, _ := json.MarshalIndent(config, "", "\t")
+	configData, err := json.MarshalIndent(config, "", "\t")
+	if err != nil {
+		t.Fatalf("Unexpected error marshaling config: %v", err)
+	}
 	err = os.WriteFile(configPath, configData, 0600)
 	if err != nil {
 		t.Fatalf("Unexpected error writing config file: %v", err)
@@ -114,7 +117,7 @@ func TestRunSetupCommand_Default(t *testing.T) {
 		t.Fatalf("Failed to unmarshal config file: %v", err)
 	}
 
-	if config.CredentialsStore != "env" {
+	if config.CredentialsStore != "env" { //nolint:goconst // Redundant constant
 		t.Errorf("Expected credsStore to be 'env', got %q", config.CredentialsStore)
 	}
 }
