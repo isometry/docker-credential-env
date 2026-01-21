@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6
 	github.com/docker/cli v29.1.5+incompatible
 	github.com/docker/docker-credential-helpers v0.9.5
-	github.com/goccy/go-yaml v1.19.1
+	github.com/goccy/go-yaml v1.19.2
 )
 
 require (
