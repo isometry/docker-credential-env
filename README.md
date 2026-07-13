@@ -52,6 +52,23 @@ Hyphens within DNS labels are transformed to underscores (`s/-/_/g`) for credent
 
 Set the environment variable `DOCKER_CREDENTIAL_ENV_DEBUG=true` to enable diagnostic output. When enabled, the helper will print information about credential sources to stderr, which can help troubleshoot authentication issues, especially with AWS ECR repositories.
 
+## Installation
+
+Install with [Homebrew](https://brew.sh) (bottles are published for all supported macOS and Linux platforms):
+
+```bash
+brew trust isometry/tap    # once, required on Homebrew ≥6
+brew install isometry/tap/docker-credential-env
+```
+
+Installed binaries carry build provenance and can be verified with:
+
+```bash
+gh attestation verify "$(brew --prefix)/bin/docker-credential-env" --repo isometry/docker-credential-env
+```
+
+Alternatively, download a pre-built archive from the [releases page](https://github.com/isometry/docker-credential-env/releases) or `go install github.com/isometry/docker-credential-env@latest`.
+
 ## Configuration
 
 The `docker-credential-env` binary must be installed to `$PATH`, and is enabled via `~/.docker/config.json` (or `$DOCKER_CONFIG/config.json` if the `DOCKER_CONFIG` environment variable is set):

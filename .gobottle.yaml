@@ -1,0 +1,11 @@
+formula:
+  name: docker-credential-env
+  description: Environment-driven Docker credential helper
+  homepage: https://just.breathe.io/project/docker-credential-env/
+  license: MIT
+
+source:
+  type: local
+
+tap:
+  owner: isometry

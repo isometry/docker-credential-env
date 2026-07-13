@@ -6,12 +6,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
-    groups:
-      "aws-sdk-go-v2":
-        patterns:
-          - "github.com/aws/aws-sdk-go-v2"
-          - "github.com/aws/aws-sdk-go-v2/*"
+    # Security-only: disables version updates while security updates continue
+    open-pull-requests-limit: 0

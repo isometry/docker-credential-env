@@ -39,15 +39,3 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-brews:
-  - repository:
-      owner: isometry
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
-    description: Environment-driven Docker credential helper
-    homepage: https://just.breathe.io/project/docker-credential-env/
-    test: |
-      system "#{bin}/docker-credential-env --version"
-    install: |
-      bin.install "docker-credential-env"
