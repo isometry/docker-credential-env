@@ -8,6 +8,7 @@ In addition to handling basic username:password credentials, the credential help
 
 * Amazon Elastic Container Registry (ECR) repositories using [standard AWS credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html), including automatic cross-account role assumption.
 * [GitHub Packages](https://ghcr.io/) via the common `GITHUB_TOKEN` environment variable.
+* [Chainguard Registry](https://cgr.dev/) via `CHAINGUARD_IDENTITY_ID` and `CHAINGUARD_TOKEN` environment variables.
 
 ## Environment Variables
 
@@ -28,6 +29,7 @@ If no environment variables for the target repository's FQDN is found, then:
   * `AWS_SESSION_TOKEN_<account_id>` (optional)
   * `AWS_ROLE_ARN_<account_id>` (optional)
   * `AWS_PROFILE_<account_id>` (optional)
+3. If the target repository is the Chainguard Registry (`cgr.dev`), the username is read from `CHAINGUARD_IDENTITY_ID` and the password from `CHAINGUARD_TOKEN`. Both must be set.
 
 ### AWS Profile Selection
 

@@ -23,9 +23,11 @@ import (
 	credhelpers "github.com/docker/docker-credential-helpers/credentials"
 )
 
-var (
-	ecrHostname  = regexp.MustCompile(`^(?P<account>[0-9]+)\.dkr\.ecr\.(?P<region>[-a-z0-9]+)\.amazonaws\.com$`)
-	ghcrHostname = regexp.MustCompile(`^ghcr\.io$`)
+var ecrHostname = regexp.MustCompile(`^(?P<account>[0-9]+)\.dkr\.ecr\.(?P<region>[-a-z0-9]+)\.amazonaws\.com$`)
+
+const (
+	ghcrHostname = "ghcr.io"
+	cgrHostname  = "cgr.dev"
 )
 
 const (
@@ -44,6 +46,11 @@ const (
 	envAwsSessionToken    = "AWS_SESSION_TOKEN"     // #nosec G101
 	envAwsRoleArn         = "AWS_ROLE_ARN"
 	envAwsProfile         = "AWS_PROFILE"
+)
+
+const (
+	envChainguardIdentityID = "CHAINGUARD_IDENTITY_ID"
+	envChainguardToken      = "CHAINGUARD_TOKEN" // #nosec G101
 )
 
 // NotSupportedError represents an error indicating that the operation is not supported.
@@ -107,11 +114,21 @@ func (e *Env) Get(serverURL string) (username string, password string, err error
 		return
 	}
 
-	if ghcrHostname.MatchString(hostname) {
+	if hostname == ghcrHostname {
 		// This is a GitHub Container Registry: ghcr.io
 		if token, found := os.LookupEnv("GITHUB_TOKEN"); found {
 			username = "x-access-token"
 			password = token
+		}
+		return
+	}
+
+	if hostname == cgrHostname {
+		// This is the Chainguard Registry: cgr.dev
+		if identity, found := os.LookupEnv(envChainguardIdentityID); found {
+			if token, found := os.LookupEnv(envChainguardToken); found {
+				username, password = identity, token
+			}
 		}
 		return
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"testing"
 )
 
@@ -209,6 +210,11 @@ func TestEnvGet(t *testing.T) {
 			input:    "https://ghcr.io",
 			expected: output{username: "x-access-token", password: "t1", err: nil},
 		},
+		{
+			name:     "Chainguard Registry",
+			input:    "https://cgr.dev",
+			expected: output{username: "id1", password: "c1", err: nil},
+		},
 	}
 
 	e := Env{}
@@ -218,12 +224,37 @@ func TestEnvGet(t *testing.T) {
 	t.Setenv("DOCKER_repo_example_com_USR", "u2")
 	t.Setenv("DOCKER_repo_example_com_PSW", "p2")
 	t.Setenv("GITHUB_TOKEN", "t1")
+	t.Setenv("CHAINGUARD_IDENTITY_ID", "id1")
+	t.Setenv("CHAINGUARD_TOKEN", "c1")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actualUsername, actualPassword, actualErr := e.Get(tt.input)
 			if actualUsername != tt.expected.username || actualPassword != tt.expected.password || !errors.Is(actualErr, tt.expected.err) {
 				t.Errorf("Get(%v) actual = (%v, %v, %v), expected (%v, %v, %v)", tt.input, actualUsername, actualPassword, actualErr, tt.expected.username, tt.expected.password, tt.expected.err)
+			}
+		})
+	}
+}
+
+func TestEnvGetChainguardPartial(t *testing.T) {
+	for name, env := range map[string]map[string]string{
+		"only identity": {"CHAINGUARD_IDENTITY_ID": "id1"},
+		"only token":    {"CHAINGUARD_TOKEN": "c1"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// Setenv then Unsetenv so each variable is restored after the test.
+			for _, k := range []string{"CHAINGUARD_IDENTITY_ID", "CHAINGUARD_TOKEN"} {
+				t.Setenv(k, "")
+				_ = os.Unsetenv(k)
+			}
+			for k, v := range env {
+				t.Setenv(k, v)
+			}
+
+			username, password, err := (&Env{}).Get("cgr.dev")
+			if username != "" || password != "" || err != nil {
+				t.Errorf("Get(cgr.dev) actual = (%v, %v, %v), expected empty credentials and nil error", username, password, err)
 			}
 		})
 	}
